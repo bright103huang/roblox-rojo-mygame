@@ -1,19 +1,45 @@
--- TaskClient.client.lua
+-- StarterPlayer.StarterPlayerScripts.Client.TaskClient.client.lua
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local TaskEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("TaskEvent")
+
+-- 等待 TaskEvent
+local function waitForTaskEvent()
+	local eventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
+	if not eventsFolder then
+		repeat
+			eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+			RunService.Heartbeat:Wait()
+		until eventsFolder
+	end
+
+	local taskEvent = eventsFolder:WaitForChild("TaskEvent", 10)
+	if not taskEvent then
+		error("TaskEvent not found - server may not be running")
+	end
+	return taskEvent
+end
+
+local TaskEvent = waitForTaskEvent()
 
 local carrying = false
 local debounce = false
 
--- 🔥 接收服务器反馈（关键）
 TaskEvent.OnClientEvent:Connect(function(result)
 	if result == "DropSuccess" then
 		print("客户端：交付成功")
 		carrying = false
+
+		-- 手动删除手中盘子（防止服务端删除失败）
+		local char = player.Character
+		if char then
+			local plate = char:FindFirstChild("Plate")
+			if plate then plate:Destroy() end
+		end
+
 	elseif result == "DropFailed" then
 		print("客户端：错误桌子")
 	end
@@ -29,17 +55,14 @@ local function bind(part)
 
 		debounce = true
 
-		-- 拿菜
 		if part.Name == "DishArea" and not carrying then
 			carrying = true
 			print("拿菜")
 			TaskEvent:FireServer("Pick")
 
-		-- 交菜（不再修改 carrying）
 		elseif part.Name == "TableArea" and carrying then
 			local tableId = part:GetAttribute("TableId")
 			print("尝试交菜，桌子ID：", tableId)
-
 			TaskEvent:FireServer("Drop", tableId)
 		end
 
