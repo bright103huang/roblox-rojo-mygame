@@ -1,26 +1,20 @@
--- ServerScriptService.Server.Systems.TaskService.server.lua
-
--- ============================
--- 防止脚本被重复执行
--- ============================
-if _G.TaskServiceLoaded then
-	warn("TaskService 已运行，跳过重复执行")
-	return
-end
-_G.TaskServiceLoaded = true
+-- ============================================================
+-- 文件：ServerScriptService.Server.Systems.TaskService.server.lua
+-- 功能：传菜任务核心逻辑（含桃子显示修复、出生点强制设置）
+-- ============================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
--- ============================
+-- ============================================================
 -- 内嵌默认配置（保证运行）
--- ============================
+-- ============================================================
 local DEFAULT_REWARDS = {
 	Deliver = { XianJing = 10 },
 	StealPeach = { XianJing = 30, Risk = 20 },
 	HelpNPC = { GongDe = 10 },
 	BigEvent = { XianJing = 50, GongDe = 20, Risk = 30 },
 }
-
 local DEFAULT_RISK_MAX = 100
 
 -- 尝试加载外部配置（若失败则用默认）
@@ -43,7 +37,7 @@ local success = pcall(function()
 	end
 end)
 
--- 奖励发放函数（内嵌版，避免依赖 RewardService 报错）
+-- 奖励发放函数
 local function giveReward(player, rewardType)
 	local reward = Config.Economy.Rewards[rewardType]
 	if not reward then return end
@@ -65,9 +59,9 @@ local function giveReward(player, rewardType)
 	end
 end
 
--- ============================
+-- ============================================================
 -- 创建 Events 和 RemoteEvent
--- ============================
+-- ============================================================
 local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
 if not eventsFolder then
 	eventsFolder = Instance.new("Folder")
@@ -83,9 +77,9 @@ if not TaskEvent then
 	print("✅ TaskEvent 已创建")
 end
 
--- ============================
--- 游戏逻辑
--- ============================
+-- ============================================================
+-- 游戏逻辑数据
+-- ============================================================
 local carrying = {}
 local currentTarget = nil
 local currentBillboard = nil
@@ -98,7 +92,7 @@ for _, v in pairs(workspace:GetDescendants()) do
 	end
 end
 
--- 强制清除所有桌子上残留的指示器（防止多个）
+-- 强制清除所有桌子上残留的指示器
 local function clearAllIndicators()
 	for _, tableArea in ipairs(tables) do
 		local existing = tableArea:FindFirstChild("TargetIndicator")
@@ -111,7 +105,7 @@ end
 
 -- 创建新指示器
 local function createIndicator(targetTableArea)
-	clearAllIndicators()  -- 先清除所有，确保唯一性
+	clearAllIndicators()
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "TargetIndicator"
@@ -151,31 +145,74 @@ assignOrder()
 -- 盘子模板
 local plateTemplate = ReplicatedStorage:WaitForChild("Plate")
 
+-- ============================================================
+-- 在桌子上生成盘子（桃子独立放置，确保可见）
+-- ============================================================
 local function spawnPlateOnTable(tableArea)
+	-- --- 1. 生成盘子 ---
 	local newPlate = plateTemplate:Clone()
 	newPlate.Name = "ServedPlate"
 	newPlate.Parent = workspace
 
-	local pos = tableArea.Position
+	local plateBase = newPlate:FindFirstChild("PlateBase")
+	if not plateBase then
+		plateBase = newPlate:FindFirstChild("Plate") or newPlate:FindFirstChild("PlatePart")
+		if plateBase then
+			newPlate.PrimaryPart = plateBase
+		end
+	end
+
+	if plateBase then
+		plateBase.Anchored = true
+	end
+
+	-- 计算位置
+	local tablePos = tableArea.Position
 	local upVector = Vector3.new(0, 1, 0)
-	local basePos = pos + upVector * 0.8
+	local basePos = tablePos + upVector * 0.8
 	local randomOffset = Vector3.new(
 		(math.random() - 0.5) * 2,
 		0,
 		(math.random() - 0.5) * 2
 	)
-	local finalPos = basePos + randomOffset
-	local randomRot = CFrame.Angles(0, math.rad(math.random(0, 360)), 0)
+	local platePos = basePos + randomOffset
+	local plateRot = CFrame.Angles(0, math.rad(math.random(0, 360)), 0)
 
-	newPlate:SetPrimaryPartCFrame(CFrame.new(finalPos) * randomRot)
+	if plateBase then
+		newPlate:SetPrimaryPartCFrame(CFrame.new(platePos) * plateRot)
+	end
 
-	for _, part in ipairs(newPlate:GetDescendants()) do
-		if part:IsA("BasePart") then
-			part.Anchored = true
-		end
+	-- --- 2. 单独生成桃子 ---
+	local peachTemplate = plateTemplate:FindFirstChild("Peach", true)
+	if peachTemplate then
+		local peach = peachTemplate:Clone()
+		peach.Name = "ServedPeach"
+		peach.Parent = workspace
+		peach.Anchored = true
+		peach.CanCollide = false
+		peach.Transparency = 0
+		peach.BrickColor = BrickColor.new("Bright orange")
+		peach.Material = Enum.Material.SmoothPlastic
+
+		local peachOffset = Vector3.new(
+			(math.random() - 0.5) * 0.8,
+			1.2,
+			(math.random() - 0.5) * 0.8
+		)
+		peach.Position = platePos + peachOffset
+
+		local peachRot = CFrame.Angles(0, plateRot:ToEulerAnglesYXZ(), 0)
+		peach.CFrame = CFrame.new(peach.Position) * peachRot
+
+		print("🍑 桃子已独立生成在位置:", peach.Position)
+	else
+		warn("❌ 未找到桃子模板，请检查 Plate 模型内是否有名为 Peach 的部件")
 	end
 end
 
+-- ============================================================
+-- 事件处理（含手持桃子修复）
+-- ============================================================
 TaskEvent.OnServerEvent:Connect(function(player, action, tableId)
 	if action == "Pick" then
 		if carrying[player.UserId] then return end
@@ -187,16 +224,38 @@ TaskEvent.OnServerEvent:Connect(function(player, action, tableId)
 		local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
 		if not hand then return end
 
+		-- 克隆盘子
 		local plate = plateTemplate:Clone()
 		plate.Name = "Plate"
 		plate.Parent = char
 		plate.PrimaryPart = plate:FindFirstChild("PlateBase")
 		plate:SetPrimaryPartCFrame(hand.CFrame * CFrame.new(0, -0.3, -1))
 
+		-- 焊接盘子到手
 		local weld = Instance.new("WeldConstraint")
 		weld.Part0 = hand
 		weld.Part1 = plate.PrimaryPart
 		weld.Parent = plate.PrimaryPart
+
+		-- 单独克隆桃子并焊接到盘子上
+		local peachTemplate = plateTemplate:FindFirstChild("Peach", true)
+		if peachTemplate then
+			local peach = peachTemplate:Clone()
+			peach.Name = "HandPeach"
+			peach.Parent = char
+			peach.Anchored = false
+			peach.CanCollide = false
+			peach.Transparency = 0
+			peach.BrickColor = BrickColor.new("Bright orange")
+			peach.Material = Enum.Material.SmoothPlastic
+
+			local peachWeld = Instance.new("WeldConstraint")
+			peachWeld.Part0 = plate.PrimaryPart
+			peachWeld.Part1 = peach
+			peachWeld.Parent = peach
+
+			peach.Position = plate.PrimaryPart.Position + Vector3.new(0, 1.2, 0)
+		end
 
 	elseif action == "Drop" then
 		if not carrying[player.UserId] then return end
@@ -211,10 +270,13 @@ TaskEvent.OnServerEvent:Connect(function(player, action, tableId)
 
 		carrying[player.UserId] = nil
 
+		-- 删除手持的盘子和桃子
 		local char = player.Character
 		if char then
 			local plate = char:FindFirstChild("Plate")
 			if plate then plate:Destroy() end
+			local handPeach = char:FindFirstChild("HandPeach")
+			if handPeach then handPeach:Destroy() end
 		end
 
 		spawnPlateOnTable(currentTarget)
@@ -224,7 +286,23 @@ TaskEvent.OnServerEvent:Connect(function(player, action, tableId)
 
 		TaskEvent:FireClient(player, "DropSuccess")
 
-		-- 分配下一个订单
 		assignOrder()
 	end
+end)
+
+-- ============================================================
+-- 修复出生点：强制将玩家传送到指定出生点
+-- ============================================================
+local SPAWN_NAME = "WorkSpawn"  -- 请改为你工作区的出生点名称
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function(char)
+		local spawnLocation = workspace:FindFirstChild(SPAWN_NAME)
+		if spawnLocation then
+			local hrp = char:WaitForChild("HumanoidRootPart")
+			hrp.CFrame = spawnLocation.CFrame + Vector3.new(0, 3, 0)
+		else
+			warn("❌ 未找到出生点：" .. SPAWN_NAME)
+		end
+	end)
 end)
