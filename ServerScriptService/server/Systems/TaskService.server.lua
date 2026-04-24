@@ -1,10 +1,13 @@
 -- ============================================================
 -- 文件：ServerScriptService.Server.Systems.TaskService.server.lua
--- 功能：传菜任务核心逻辑（含桃子显示修复、出生点强制设置）
+-- 功能：传菜核心逻辑（支持存档数据同步）
 -- ============================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+
+-- 加载 DataManager（存档管理模块）
+local DataManager = require(script.Parent.DataManager)
 
 -- ============================================================
 -- 内嵌默认配置（保证运行）
@@ -37,24 +40,35 @@ local success = pcall(function()
 	end
 end)
 
--- 奖励发放函数
+-- ============================================================
+-- 奖励发放函数（已适配 DataManager 存档）
+-- ============================================================
 local function giveReward(player, rewardType)
 	local reward = Config.Economy.Rewards[rewardType]
 	if not reward then return end
 
 	for key, value in pairs(reward) do
 		if key == "XianJing" or key == "GongDe" then
-			local leaderstats = player:FindFirstChild("leaderstats")
-			if leaderstats then
-				local statName = (key == "XianJing") and "仙晶" or "功德"
-				local stat = leaderstats:FindFirstChild(statName)
-				if stat then
-					stat.Value += value
+			-- 从 DataManager 缓存获取当前值，计算新值后回写
+			local data = DataManager:GetData(player)
+			if data then
+				local newValue = data[key] + value
+				DataManager:UpdateField(player, key, newValue)
+			else
+				-- 降级处理：直接操作 leaderstats
+				local leaderstats = player:FindFirstChild("leaderstats")
+				if leaderstats then
+					local statName = (key == "XianJing") and "仙晶" or "功德"
+					local stat = leaderstats:FindFirstChild(statName)
+					if stat then
+						stat.Value += value
+					end
 				end
 			end
 		elseif key == "Risk" then
 			local current = player:GetAttribute("Risk") or 0
-			player:SetAttribute("Risk", math.min(current + value, Config.Risk.MaxRisk))
+			local newRisk = math.min(current + value, Config.Risk.MaxRisk)
+			DataManager:UpdateField(player, "Risk", newRisk)
 		end
 	end
 end
@@ -291,18 +305,23 @@ TaskEvent.OnServerEvent:Connect(function(player, action, tableId)
 end)
 
 -- ============================================================
--- 修复出生点：强制将玩家传送到指定出生点
+-- 保证玩家出生在正确场景（此脚本已交给 SceneManager 处理，
+-- 但为确保兼容，如果 SceneManager 不存在，则回退到 WorkSpawn）
 -- ============================================================
-local SPAWN_NAME = "WorkSpawn"  -- 请改为你工作区的出生点名称
+local SPAWN_NAME = "WorkSpawn"
 
-Players.PlayerAdded:Connect(function(player)
-	player.CharacterAdded:Connect(function(char)
-		local spawnLocation = workspace:FindFirstChild(SPAWN_NAME)
-		if spawnLocation then
-			local hrp = char:WaitForChild("HumanoidRootPart")
-			hrp.CFrame = spawnLocation.CFrame + Vector3.new(0, 3, 0)
-		else
-			warn("❌ 未找到出生点：" .. SPAWN_NAME)
-		end
+-- 仅当 SceneManager 未处理时才执行（避免冲突）
+local sceneManager = script.Parent:FindFirstChild("SceneManager")
+if not sceneManager then
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function(char)
+			local spawnLocation = workspace:FindFirstChild(SPAWN_NAME)
+			if spawnLocation then
+				local hrp = char:WaitForChild("HumanoidRootPart")
+				hrp.CFrame = spawnLocation.CFrame + Vector3.new(0, 3, 0)
+			else
+				warn("❌ 未找到出生点：" .. SPAWN_NAME)
+			end
+		end)
 	end)
-end)
+end
