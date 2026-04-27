@@ -9,24 +9,18 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- ============================================================
--- 1. 安全等待 Events 和 ChoiceEvent（防止无限等待）
+-- 安全等待 Events 和 ChoiceEvent（防止无限等待）
 -- ============================================================
 local function waitForEvents()
 	local events = ReplicatedStorage:FindFirstChild("Events")
 	if events then return events end
-
-	-- 等待最多 15 秒
 	events = ReplicatedStorage:WaitForChild("Events", 15)
 	if events then return events end
-
-	-- 再重试最多 15 秒
 	local start = tick()
 	while not events do
 		task.wait(0.5)
 		events = ReplicatedStorage:FindFirstChild("Events")
-		if tick() - start > 15 then
-			return nil
-		end
+		if tick() - start > 15 then return nil end
 	end
 	return events
 end
@@ -44,7 +38,7 @@ if not ChoiceEvent then
 end
 
 -- ============================================================
--- 2. 动态创建 UI（无需手动在 StarterGui 中摆放）
+-- 动态创建选择界面
 -- ============================================================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ChoiceScreen"
@@ -59,11 +53,9 @@ frame.BorderSizePixel = 0
 frame.Visible = false
 frame.Parent = screenGui
 
--- 圆角
 local corner = Instance.new("UICorner", frame)
 corner.CornerRadius = UDim.new(0, 12)
 
--- 标题
 local title = Instance.new("TextLabel")
 title.Name = "Title"
 title.Size = UDim2.new(1, 0, 0, 40)
@@ -90,7 +82,7 @@ continueBtn.Parent = frame
 local continueCorner = Instance.new("UICorner", continueBtn)
 continueCorner.CornerRadius = UDim.new(0, 8)
 
--- 下班回家按钮
+-- 回家躺平按钮
 local quitBtn = Instance.new("TextButton")
 quitBtn.Name = "QuitBtn"
 quitBtn.Size = UDim2.new(0, 220, 0, 45)
@@ -106,7 +98,7 @@ local quitCorner = Instance.new("UICorner", quitBtn)
 quitCorner.CornerRadius = UDim.new(0, 8)
 
 -- ============================================================
--- 3. 监听仙晶变化，达到 60 时显示选择框
+-- 监听仙晶变化，达到 60 时显示
 -- ============================================================
 local leaderstats = player:WaitForChild("leaderstats")
 local gold = leaderstats:WaitForChild("仙晶")
@@ -120,10 +112,10 @@ local function onGoldChanged()
 end
 
 gold:GetPropertyChangedSignal("Value"):Connect(onGoldChanged)
-onGoldChanged()  -- 初始检查
+onGoldChanged()
 
 -- ============================================================
--- 4. 按钮点击事件（发送选择到服务端）
+-- 按钮事件
 -- ============================================================
 continueBtn.MouseButton1Click:Connect(function()
 	frame.Visible = false
