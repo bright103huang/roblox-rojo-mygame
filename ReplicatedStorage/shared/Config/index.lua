@@ -12,6 +12,7 @@ end
 local Economy = waitForModule("EconomyConfig")
 local Player = waitForModule("PlayerConfig")
 local Risk = waitForModule("RiskConfig")
+local Task = waitForModule("TaskConfig")
 
 local function safeRequire(module, defaultTable)
 	if not module then return defaultTable end
@@ -36,9 +37,14 @@ local DEFAULT_ECONOMY = {
 }
 local DEFAULT_PLAYER = { WalkSpeed = 16, MaxHP = 100, BasePower = 1 }
 local DEFAULT_RISK = { MaxRisk = 100, Threshold = { Low = 30, Mid = 60, High = 80 } }
+local DEFAULT_TASK = {
+	Tasks = {},
+	General = { DebounceTime = 0.3 },
+}
 
 return {
 	Economy = safeRequire(Economy, DEFAULT_ECONOMY),
 	Player = safeRequire(Player, DEFAULT_PLAYER),
 	Risk = safeRequire(Risk, DEFAULT_RISK),
+	Task = safeRequire(Task, DEFAULT_TASK),
 }

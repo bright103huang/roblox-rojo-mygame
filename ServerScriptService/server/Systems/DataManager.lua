@@ -34,6 +34,8 @@ local function getDefaultData()
 		CurrentScene = "Work",
 		HasQuitJob = false,
 		Risk = 10,
+		DeliverCount = 0,
+		SpeedBonus = 0,
 	}
 end
 
@@ -123,6 +125,26 @@ function DataManager:UpdateField(player, field, value)
 	elseif field == "Risk" then
 		player:SetAttribute("Risk", value)
 	end
+	-- DeliverCount 和 SpeedBonus 存储在 DataManager 缓存中
+	-- 通过 GetData / ApplySpeed 访问，无需同步到 leaderstats
+end
+
+-- 应用移动速度到角色（基础速度 + 成长加成）
+function DataManager:ApplySpeed(player)
+	local data = playerDataCache[player.UserId]
+	if not data then return end
+
+	local char = player.Character
+	if not char then return end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	local baseSpeed = 16
+	local totalSpeed = baseSpeed + (data.SpeedBonus or 0)
+	humanoid.WalkSpeed = totalSpeed
+	print("🏃 已设置 " .. player.Name .. " 的 WalkSpeed = " .. totalSpeed
+		.. " (基础 " .. baseSpeed .. " + 加成 " .. (data.SpeedBonus or 0) .. ")")
 end
 
 function DataManager:Save(player)

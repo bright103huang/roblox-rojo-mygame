@@ -82,6 +82,8 @@ local function onPlayerAdded(player)
         local hum = char:WaitForChild("Humanoid")
         if hum then hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false) end
         hrp.CFrame = CFrame.new(getSceneSpawnPosition(scene))
+        -- 应用速度成长
+        DataManager:ApplySpeed(player)
         print("👣 玩家 " .. player.Name .. " 重生在场景：" .. scene)
     end)
 end

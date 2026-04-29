@@ -1,28 +1,11 @@
 {
-  "description": "Roblox game project using Rojo build system",
-  "model": "claude-sonnet-4-6",
-  "context": {
-    "general": "This is a Roblox game project using Rojo for building. The project structure follows Rojo conventions with client, server, and shared modules. Lua is the primary language.",
-    "file_patterns": ["*.lua", "*.json", "*.rbxlx", "*.rbxmx"],
-    "ignore_patterns": ["*.log", "*.tmp", "node_modules/", ".git/"]
-  },
-  "permissions": {
-    "auto_approve": ["bash:rojo", "bash:lua", "bash:git", "bash:gh", "bash:npm", "read", "write", "glob", "grep"],
-    "blocked_tools": []
-  },
-  "hooks": {
-    "pre_commit": "echo 'Validating Rojo project...' && rojo diagnose",
-    "post_commit": "echo 'Commit successful'",
-    "on_file_change": {
-      "*.lua": "echo 'Lua file changed, consider running tests'"
-    }
-  },
   "env": {
-    "ROJO_VERSION": "7.6.1",
-    "LUA_VERSION": "5.1"
-  },
-  "skills": {
-    "enabled": ["update-config", "simplify", "loop"],
-    "disabled": []
+    "ANTHROPIC_AUTH_TOKEN": "sk-5a50a98b514b48499f4d66485e85beca",
+    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+    "ANTHROPIC_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_SMALL_FAST_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-flash",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
   }
 }
