@@ -226,7 +226,7 @@ function DeliverTask.OnPlayerPickup(player, _area)
 
 	-- 克隆盘子
 	local plate = plateTemplate:Clone()
-	plate.Name = "Plate"
+	plate.Name = "Dish"
 	plate.Parent = char
 	plate.PrimaryPart = plate:FindFirstChild("PlateBase")
 	if plate.PrimaryPart then
@@ -280,8 +280,8 @@ function DeliverTask.OnPlayerDrop(player, area)
 	-- 删除手持的盘子和桃子
 	local char = player.Character
 	if char then
-		local plate = char:FindFirstChild("Plate")
-		if plate then plate:Destroy() end
+		local dish = char:FindFirstChild("Dish")
+		if dish then dish:Destroy() end
 		local handPeach = char:FindFirstChild("HandPeach")
 		if handPeach then handPeach:Destroy() end
 	end

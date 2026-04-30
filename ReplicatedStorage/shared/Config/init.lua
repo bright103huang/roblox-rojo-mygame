@@ -1,4 +1,4 @@
--- index.luau
+-- init.lua
 -- 等待兄弟模块同步完成（最多等待 10 秒）
 local function waitForModule(name)
 	local module = script:WaitForChild(name, 10)

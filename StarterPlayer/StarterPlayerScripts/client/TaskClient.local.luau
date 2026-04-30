@@ -78,8 +78,8 @@ TaskEvent.OnClientEvent:Connect(function(result)
 		-- 清理手持道具
 		local char = player.Character
 		if char then
-			local plate = char:FindFirstChild("Plate")
-			if plate then plate:Destroy() end
+			local dish = char:FindFirstChild("Dish")
+			if dish then dish:Destroy() end
 			local handPeach = char:FindFirstChild("HandPeach")
 			if handPeach then handPeach:Destroy() end
 		end
@@ -98,6 +98,17 @@ TaskEvent.OnClientEvent:Connect(function(result)
 		print("⚡ 速度升级！当前额外速度：" .. tostring(result))
 	end
 end)
+
+-- ============================================================
+-- 工具函数
+-- ============================================================
+local function pairsCount(t)
+	local n = 0
+	for _ in pairs(t) do
+		n += 1
+	end
+	return n
+end
 
 -- ============================================================
 -- 构建交互映射
@@ -130,13 +141,6 @@ print("📋 客户端已加载 " .. pairsCount(partMap) .. " 个交互区域类�
 -- ============================================================
 -- 绑定触摸事件
 -- ============================================================
-local function pairsCount(t)
-	local n = 0
-	for _ in pairs(t) do
-		n += 1
-	end
-	return n
-end
 
 local DebounceTime = TaskConfig.General.DebounceTime or 0.3
 
@@ -188,6 +192,9 @@ local function bind(part)
 		state.debounce = false
 	end)
 end
+
+-- 等待场景加载完成
+task.wait(1)
 
 -- 扫描现有物体并绑定
 for _, v in pairs(workspace:GetDescendants()) do
