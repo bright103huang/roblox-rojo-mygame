@@ -15,7 +15,19 @@ EconomyConfig.Rewards = {
 		["仙晶"] = 50,
 		["功德"] = 20,
 		["风险"] = 30,
-	}
+	},
+	Alchemy = {
+		["仙晶"] = 15,
+	},
+	BeastKill = {
+		["仙晶"] = 25,
+	},
+	Patrol = {
+		["仙晶"] = 5,
+	},
+	ExpelMonkey = {
+		["仙晶"] = 3,
+	},
 }
 
 return EconomyConfig

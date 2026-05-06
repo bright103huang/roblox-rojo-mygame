@@ -53,20 +53,87 @@ local TaskConfig = {
 
 		-- ============================================================
 		-- 预留：后续在此添加新任务
-		-- 示例：
-		-- PeachPlant = {
-		--     DisplayName = "蟠桃种植",
-		--     Description = "在蟠桃园种植仙桃树苗",
-		--     HandlerModule = "Server.Tasks.PlantTask",
-		--     InteractionAreas = {
-		--         Pickup = { PartName = "SeedArea", FireAction = "PickSeed" },
-		--         Drop   = { PartName = "PlantArea", FireAction = "Plant" },
-		--     },
-		--     RewardType = "PlantPeach",
-		--     TargetRequired = false,
-		--     SpawnOnComplete = false,
-		-- },
 		-- ============================================================
+
+		Alchemy = {
+			DisplayName = "炼丹",
+			Description = "在丹房炼制仙丹，提升火候修为",
+			HandlerModule = "Tasks.AlchemyTask",
+			InteractionAreas = {
+				Pickup = {
+					PartName = "IngredientTable",
+					FireAction = "Pick",
+				},
+				Drop = {
+					PartName = "Furnace",
+					FireAction = "Drop",
+				},
+			},
+			RewardType = "Alchemy",
+			TargetRequired = false,
+			SpawnOnComplete = false,
+		},
+
+		Beast = {
+			DisplayName = "妖兽",
+			Description = "前往妖兽谷狩猎，淬炼仙力",
+			HandlerModule = "Tasks.BeastTask",
+			InteractionAreas = {
+				Pickup = {
+					PartName = "BeastSpawn",
+					FireAction = "Pick",
+				},
+				Drop = {
+					PartName = "BeastHitbox",
+					FireAction = "Attack",
+				},
+			},
+			RewardType = "BeastKill",
+			TargetRequired = false,
+			SpawnOnComplete = false,
+		},
+
+		-- ============================================================
+		-- 天兵任务（入职后解锁）
+		-- ============================================================
+
+		Patrol = {
+			DisplayName = "巡逻",
+			Description = "在蟠桃园中巡逻，守护仙桃",
+			HandlerModule = "Tasks.PatrolTask",
+			InteractionAreas = {
+				Pickup = {
+					PartName = "PatrolStart",
+					FireAction = "Pick",
+				},
+				Drop = {
+					PartName = "PatrolPoint",
+					FireAction = "Drop",
+				},
+			},
+			RewardType = "Patrol",
+			TargetRequired = false,
+			SpawnOnComplete = false,
+		},
+
+		ExpelMonkey = {
+			DisplayName = "驱猴",
+			Description = "驱赶偷桃的猴妖",
+			HandlerModule = "Tasks.ExpelMonkeyTask",
+			InteractionAreas = {
+				Pickup = {
+					PartName = "MonkeySpawn",
+					FireAction = "Pick",
+				},
+				Drop = {
+					PartName = "Monkey",
+					FireAction = "Drop",
+				},
+			},
+			RewardType = "ExpelMonkey",
+			TargetRequired = false,
+			SpawnOnComplete = false,
+		},
 	},
 
 	-- ============================================================

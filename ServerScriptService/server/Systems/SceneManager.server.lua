@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(script.Parent.DataManager)
+local SpeedCalculator = require(script.Parent.SpeedCalculator)
 
 -- 不区分大小写查找
 local function findChildNoCase(parent, name)
@@ -77,13 +78,22 @@ local function onPlayerAdded(player)
     if playerConnections[player] then playerConnections[player]:Disconnect() end
     playerConnections[player] = player.CharacterAdded:Connect(function(char)
         local data = DataManager:GetData(player) or DataManager:InitPlayer(player)
+        -- 已入职天兵的玩家出生在蟠桃园
         local scene = data.CurrentScene or "Work"
+        if data.IsRecruited and scene ~= "PeachGarden" then
+            scene = "PeachGarden"
+            DataManager:UpdateField(player, "CurrentScene", "PeachGarden")
+        end
         local hrp = char:WaitForChild("HumanoidRootPart")
         local hum = char:WaitForChild("Humanoid")
         if hum then hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false) end
         hrp.CFrame = CFrame.new(getSceneSpawnPosition(scene))
-        -- 应用速度成长
-        DataManager:ApplySpeed(player)
+        -- 同步天兵状态到 Attributes
+        player:SetAttribute("IsRecruited", data.IsRecruited or false)
+        player:SetAttribute("MilitaryRank", data.MilitaryRank or "天兵")
+        player:SetAttribute("Merit", data.Merit or 0)
+        -- 应用动态速度（身法 + 状态修正）
+        SpeedCalculator.Apply(player)
         print("👣 玩家 " .. player.Name .. " 重生在场景：" .. scene)
     end)
 end

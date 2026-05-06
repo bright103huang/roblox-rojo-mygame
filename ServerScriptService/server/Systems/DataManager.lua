@@ -24,16 +24,48 @@ local dataStore = getDataStore()
 
 local playerDataCache = {}
 
+local DEFAULT_DATA = {
+	XianJing = 0,
+	GongDe = 0,
+	CurrentScene = "Work",
+	HasQuitJob = false,
+	Risk = 10,
+	-- 废弃字段（保留兼容旧存档，代码中不再写入）
+	DeliverCount = 0,
+	SpeedBonus = 0,
+	-- 新增 — 即时状态
+	Stamina = 100,
+	Spirit = 100,
+	Fatigue = 0,
+	FirePoison = 0,
+	Malice = 0,
+	-- 新增 — 永久属性（含经验）
+	Agility = 1,
+	AgilityExp = 0,
+	AlchemyLv = 1,
+	AlchemyExp = 0,
+	Combat = 1,
+	CombatExp = 0,
+	-- 新增 — 时间
+	TotalDays = 0,
+	-- 新增 — 商店系统
+	DailyPurchases = {},  -- { [itemKey] = count }
+	LastPurchaseReset = 0,
+	-- 新增 — 考编 & 天兵
+	IsRecruited = false,   -- 是否已入职天兵
+	Loyalty = 50,          -- 天庭忠诚度 (0-100)
+	WukongFavor = 0,       -- 孙悟空好感度 (0-100)
+	Chaos = 0,             -- 混沌值 (0-100)
+	EndingReached = false,  -- 是否已达结局
+	LastEventHour = -99,   -- 上次事件时辰
+	Merit = 0,             -- 天兵功勋
+	MilitaryRank = "天兵",  -- 军衔
+	PatrolCount = 0,       -- 今日巡逻次数
+	ExpelCount = 0,        -- 今日驱猴次数
+}
+
 local function getDefaultData()
-	return {
-		XianJing = 0,
-		GongDe = 0,
-		CurrentScene = "Work",
-		HasQuitJob = false,
-		Risk = 10,
-		DeliverCount = 0,
-		SpeedBonus = 0,
-	}
+	return DEFAULT_DATA
 end
 
 local function loadPlayerData(player)
@@ -43,6 +75,7 @@ local function loadPlayerData(player)
 	local cached = memoryStorage[userId]
 	if cached then
 		print("📥 从内存缓存加载存档：" .. player.Name)
+		setmetatable(cached, { __index = DEFAULT_DATA })
 		return cached
 	end
 
@@ -53,6 +86,8 @@ local function loadPlayerData(player)
 		end)
 		if success and result then
 			print("📥 加载存档成功：" .. player.Name)
+			-- 通过 metatable 保证旧存档缺少新字段时自动使用默认值
+			setmetatable(result, { __index = DEFAULT_DATA })
 			return result
 		elseif not success then
 			warn("❌ DataStore 读取失败：" .. tostring(result) .. "，回退内存")
@@ -61,7 +96,8 @@ local function loadPlayerData(player)
 
 	-- 3. 新玩家，使用默认数据
 	print("📦 新玩家，使用默认数据：" .. player.Name)
-	return getDefaultData()
+	local data = getDefaultData()
+	return data
 end
 
 local function savePlayerData(player, data)
@@ -95,8 +131,30 @@ function DataManager:InitPlayer(player)
 		if gold then gold.Value = data.XianJing end
 		local merit = leaderstats:FindFirstChild("功德")
 		if merit then merit.Value = data.GongDe end
+		-- 同步身法/火候/仙力等级
+		local agilityStat = leaderstats:FindFirstChild("身法")
+		if agilityStat then agilityStat.Value = data.Agility or 1 end
+		local alchemyStat = leaderstats:FindFirstChild("火候")
+		if alchemyStat then alchemyStat.Value = data.AlchemyLv or 1 end
+		local combatStat = leaderstats:FindFirstChild("仙力")
+		if combatStat then combatStat.Value = data.Combat or 1 end
 	end
+
+	-- 同步所有即时状态为 Attribute（客户端可读）
 	player:SetAttribute("Risk", data.Risk)
+	player:SetAttribute("Stamina", data.Stamina)
+	player:SetAttribute("Spirit", data.Spirit)
+	player:SetAttribute("Fatigue", data.Fatigue)
+	player:SetAttribute("FirePoison", data.FirePoison)
+	player:SetAttribute("Malice", data.Malice)
+	-- 同步属性等级
+	player:SetAttribute("Agility", data.Agility or 1)
+	player:SetAttribute("AlchemyLv", data.AlchemyLv or 1)
+	player:SetAttribute("Combat", data.Combat or 1)
+	-- 同步考编 & 天兵状态
+	player:SetAttribute("IsRecruited", data.IsRecruited or false)
+	player:SetAttribute("MilitaryRank", data.MilitaryRank or "天兵")
+	player:SetAttribute("Merit", data.Merit or 0)
 
 	return data
 end
@@ -120,14 +178,31 @@ function DataManager:UpdateField(player, field, value)
 				stat.Value = value
 			end
 		end
+	elseif field == "Agility" or field == "AlchemyLv" or field == "Combat" then
+		-- 永久属性等级同步到 leaderstats 和 attribute
+		local leaderstats = player:FindFirstChild("leaderstats")
+		if leaderstats then
+			local nameMap = { Agility = "身法", AlchemyLv = "火候", Combat = "仙力" }
+			local stat = leaderstats:FindFirstChild(nameMap[field])
+			if stat then stat.Value = value end
+		end
+		player:SetAttribute(field, value)
 	elseif field == "Risk" then
 		player:SetAttribute("Risk", value)
+	elseif field == "Stamina" or field == "Spirit" or field == "Fatigue"
+		or field == "FirePoison" or field == "Malice" then
+		-- 即时状态同步到 Attribute
+		player:SetAttribute(field, value)
+	elseif field == "Merit" or field == "MilitaryRank" then
+		-- 天兵功勋/军衔同步到 Attribute（StatusUI 读取）
+		player:SetAttribute(field, value)
 	end
-	-- DeliverCount 和 SpeedBonus 存储在 DataManager 缓存中
-	-- 通过 GetData / ApplySpeed 访问，无需同步到 leaderstats
+	-- AgilityExp / AlchemyExp / CombatExp / TotalDays
+	-- 存储在 DataManager 缓存中，无需同步到客户端
 end
 
--- 应用移动速度到角色（基础速度 + 成长加成）
+-- ApplySpeed 临时实现（使用身法系统）
+-- 后续由 SpeedCalculator（Phase 2）替代
 function DataManager:ApplySpeed(player)
 	local data = playerDataCache[player.UserId]
 	if not data then return end
@@ -138,11 +213,18 @@ function DataManager:ApplySpeed(player)
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
+	local agility = data.Agility or 1
+	local fatigue = data.Fatigue or 0
+	local firePoison = data.FirePoison or 0
 	local baseSpeed = 16
-	local totalSpeed = baseSpeed + (data.SpeedBonus or 0)
+	local agilityBonus = agility * 0.5
+	local modifier = 1.0
+	if fatigue > 80 then modifier = 0.6 end
+	if firePoison > 80 then modifier = 0.5 end
+
+	local totalSpeed = (baseSpeed + agilityBonus) * modifier
 	humanoid.WalkSpeed = totalSpeed
-	print("🏃 已设置 " .. player.Name .. " 的 WalkSpeed = " .. totalSpeed
-		.. " (基础 " .. baseSpeed .. " + 加成 " .. (data.SpeedBonus or 0) .. ")")
+	print("🏃 已设置 " .. player.Name .. " 的 WalkSpeed = " .. totalSpeed)
 end
 
 function DataManager:Save(player)

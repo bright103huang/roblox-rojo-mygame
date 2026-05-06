@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local DataManager = require(script.Parent.DataManager)
+local SpeedCalculator = require(script.Parent.SpeedCalculator)
 local Config = require(ReplicatedStorage.Shared.Config)
 
 -- ============================================================
@@ -175,8 +176,41 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			TaskEvent:FireClient(player, "DropFailed:" .. taskName)
 		elseif result == "NotCarrying" then
 			TaskEvent:FireClient(player, "DropFailed:" .. taskName)
+		elseif result == "OpenUI" then
+			-- 特殊结果：UI 已在 OnPlayerDrop 中通过 TaskEvent 触发
+			-- 无需额外操作
 		else
 			TaskEvent:FireClient(player, "DropFailed:" .. taskName)
+		end
+
+	elseif actionType == "Craft" then
+		-- 炼丹操作：由客户端 UI 触发
+		if handler.OnCraft then
+			local ok, result = handler.OnCraft(player, contextData)
+			if ok and result then
+				if result.Success then
+					TaskEvent:FireClient(player, "CraftSuccess:" .. taskName, result)
+				else
+					TaskEvent:FireClient(player, "CraftFailed:" .. taskName, result)
+				end
+			else
+				TaskEvent:FireClient(player, "CraftFailed:" .. taskName, { Reason = tostring(result) })
+			end
+		else
+			warn("⚠️ 任务 " .. taskName .. " 未实现 OnCraft 处理器")
+		end
+
+	elseif actionType == "Attack" then
+		-- 妖兽攻击操作
+		if handler.OnAttack then
+			local ok, result = handler.OnAttack(player, contextData)
+			if ok then
+				TaskEvent:FireClient(player, "AttackSuccess:" .. taskName, result)
+			else
+				TaskEvent:FireClient(player, "AttackFailed:" .. taskName, result)
+			end
+		else
+			warn("⚠️ 任务 " .. taskName .. " 未实现 OnAttack 处理器")
 		end
 
 	else
@@ -200,7 +234,7 @@ if not sceneManager then
 			else
 				warn("❌ 未找到出生点：" .. SPAWN_NAME)
 			end
-			DataManager:ApplySpeed(player)
+			SpeedCalculator.Apply(player)
 		end)
 	end)
 end
