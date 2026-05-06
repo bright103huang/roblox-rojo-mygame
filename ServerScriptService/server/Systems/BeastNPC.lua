@@ -71,15 +71,15 @@ function BeastNPC.SpawnBeast(player, spawnPart, tier)
 	local beastId = nextBeastId
 	local spawnPos = spawnPart.Position
 
-	-- 创建妖兽 NPC（简单的 Part 组合）
+	-- 创建妖兽 NPC（简单的 Part 组合，2D：Z 锁定为 0）
 	local npc = Instance.new("Model")
 	npc.Name = "Beast_" .. beastId
 
-	-- 主体
+	-- 主体（Z=0）
 	local root = Instance.new("Part")
 	root.Name = "BeastRoot"
 	root.Size = Vector3.new(3, 2, 3)
-	root.Position = spawnPos + Vector3.new(0, 3, 0)
+	root.Position = Vector3.new(spawnPos.X, spawnPos.Y + 3, 0)
 	root.Anchored = false
 	root.CanCollide = true
 	root.BrickColor = tier == "Boss" and BrickColor.new("Really red")
@@ -89,11 +89,11 @@ function BeastNPC.SpawnBeast(player, spawnPart, tier)
 	root.Parent = npc
 	npc.PrimaryPart = root
 
-	-- 碰撞体（用于 Touched 检测）
+	-- 碰撞体（Z=0）
 	local hitbox = Instance.new("Part")
 	hitbox.Name = "BeastHitbox"
 	hitbox.Size = Vector3.new(5, 4, 5)
-	hitbox.Position = spawnPos + Vector3.new(0, 3, 0)
+	hitbox.Position = Vector3.new(spawnPos.X, spawnPos.Y + 3, 0)
 	hitbox.Anchored = false
 	hitbox.CanCollide = false
 	hitbox.Transparency = 0.8
@@ -204,11 +204,11 @@ function BeastNPC:BeastAI(beastId)
 		local direction = (targetPos - root.Position).Unit
 		local speed = beast.Stats.Speed
 		root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(180), 0)
-		-- 2D 移动（仅 XZ 平面）
+		-- 2D 移动（仅 X 轴，Z=0）
 		local newPos = root.Position + Vector3.new(
-			direction.X * speed * 0.1, 0, direction.Z * speed * 0.1
+			direction.X * speed * 0.1, 0, 0
 		)
-		root.CFrame = CFrame.new(newPos)
+		root.CFrame = CFrame.new(Vector3.new(newPos.X, newPos.Y, 0))
 
 		-- 到达巡逻点后选新点
 		if (root.Position - targetPos).Magnitude < 2 then
@@ -299,11 +299,11 @@ function BeastNPC.GetPlayerBeast(player)
 	return nil
 end
 
--- 随机巡逻点
+-- 随机巡逻点（2D：Z=0）
 function BeastNPC.RandomPatrolPoint(center)
-	local angle = math.random() * math.pi * 2
 	local dist = math.random() * PATROL_RADIUS
-	return center + Vector3.new(math.cos(angle) * dist, 0, math.sin(angle) * dist)
+	local dir = math.random() * 2 - 1  -- -1 到 1
+	return Vector3.new(center.X + dir * dist, center.Y, 0)
 end
 
 -- 销毁妖兽

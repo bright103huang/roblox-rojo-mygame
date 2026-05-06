@@ -42,6 +42,9 @@ end
 
 local StatusService = {}
 
+-- 等级提升回调（由 TaskService 注册，用于触发场景选择面板）
+StatusService.OnLevelUp = nil
+
 -- 检查玩家能否执行任务
 -- costs: { Stamina = 15, Spirit = 20 }
 -- 返回: boolean, reason
@@ -160,6 +163,13 @@ function StatusService:AddExp(player, attrField, amount)
 			if taskEvent then
 				taskEvent:FireClient(player, "LevelUp:" .. attrField, data[attrField])
 			end
+		end
+
+		-- 触发等级提升回调（TaskService 注册，用于打开场景选择面板）
+		if StatusService.OnLevelUp then
+			task.spawn(function()
+				StatusService.OnLevelUp(player, attrField, data[attrField])
+			end)
 		end
 	else
 		-- 只更新经验（不更新 level），无需同步客户端

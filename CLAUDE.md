@@ -5,7 +5,26 @@
 - **同步方式**：Roblox Studio SSS（文件直连，不使用 Rojo）
 - **文件命名**：客户端脚本使用 `.legacy.lua` 后缀（RunContext = Legacy）
 - **语言**：Luau（部分文件使用 `.luau` 扩展名）
-- **场景**：多场景沙盒，通过传送阵切换
+- **场景**：多场景沙盒，通过场景选择面板切换（无物理传送阵）
+
+---
+
+## 2D 横版游戏设计
+
+### 核心约束
+- **摄像机**：固定在角色上方偏后 `CFrame.new(root.Position + Vector3.new(0, 10, 30), root.Position)`
+- **Z 轴锁定**：角色 `HumanoidRootPart.Position.Z` 每帧被强制设为 0（由 Lock2D 脚本执行）
+- **移动**：角色只能在 X 轴左右移动 + Y 轴跳跃，Z 轴始终为 0
+- **交互区域**：所有任务交互区域（DishArea、TableArea、BeastSpawn 等）必须位于 Z=0 才能被角色触摸
+- **场景装修**：装饰元素分两层 — 后层 Z=-4，前层 Z=4，角色在 Z=0 的路径上行走
+- **NPC（妖兽）**：同样锁定 Z=0，AI 移动仅在 X 轴（`Vector3.new(direction.X * speed * 0.1, 0, 0)`）
+
+### 场景布局原则
+所有场景以 2D 横版方式布置：
+1. 地面平面在 Z 轴宽 8（从 -4 到 4），角色在 Z=0 线上移动
+2. 交互区域（可与角色碰撞的 Part）固定在 Z=0
+3. 装饰/背景在 Z=-4（后层）和 Z=4（前层），可碰撞关闭
+4. X 轴范围因场景而异（御膳房最宽，约 140 格）
 
 ---
 
@@ -83,6 +102,7 @@ AlchemyUI.legacy.lua  → 药材选择面板 + 配方提示 + 炼制结果弹窗
 DayNightUI.legacy.lua → 左上角色时辰 + 昼夜图标
 ShopUI.legacy.lua     → 仙丹阁商店面板
 ChaosEventUI.legacy.lua → 叙事选择弹窗
+SceneChoiceUI.legacy.lua → 场景选择面板（资源耗尽/升级/手动触发时弹出）
 ```
 
 ---
@@ -106,8 +126,8 @@ ChaosEventUI.legacy.lua → 叙事选择弹窗
 | `Systems/TimeService.server.lua` | 12 分钟时间循环，午夜疲劳结算 |
 | `Systems/BeastNPC.lua` | 妖兽 NPC 生成和 AI |
 | `Systems/TaskService.server.lua` | 调度器：加载处理器、路由事件 |
-| `Systems/SceneSetup.server.lua` | 场景初始化：创建交互区域 + 传送阵 |
-| `Systems/SceneManager.server.lua` | 场景管理：出生分配、传送（不创建区域） |
+| `Systems/SceneSetup.server.lua` | 场景初始化：创建交互区域 + 主题装修（2D 横版） |
+| `Systems/SceneManager.server.lua` | 场景管理：出生分配、远程传送（RemoteEvent） |
 | `Systems/ShopService.server.lua` | 商店逻辑：每日限购、库存、购买 |
 | `Systems/ExamService.server.lua` | 考编指数计算、考核逻辑、晋升处理 |
 | `Systems/MeritService.lua` | 天兵功勋系统 |
@@ -124,6 +144,7 @@ ChaosEventUI.legacy.lua → 叙事选择弹窗
 | `Client/DayNightUI.legacy.lua` | 时辰 + 昼夜显示 |
 | `Client/ShopUI.legacy.lua` | 仙丹阁商店面板 |
 | `Client/ChaosEventUI.legacy.lua` | 叙事选择弹窗 |
+| `Client/SceneChoiceUI.legacy.lua` | 场景选择面板（资源耗尽/升级/手动触发） |
 | `Client/StoryPlayer.local.luau` | 叙事播放器 |
 | `Client/StoryIntro.local.luau` | 游戏开场叙事 |
 | `Client/Camera2D.local.lua` | 2D 摄像机 |
@@ -175,28 +196,40 @@ FireAction 支持的值：`Pick` / `Drop` / `Attack` / `Craft`
 
 ### 场景坐标
 
-| 场景 | 入口坐标 | 传送阵连接 |
-|------|---------|-----------|
-| 人间（传菜） | (0, 3, 0) | 右→炼丹，左→仙丹阁 |
-| 炼丹洞天 | (1000, 3, 0) | 右→妖兽，左→人间 |
-| 妖兽战场 | (2000, 3, 0) | 左→炼丹 |
-| 仙丹阁 | (-1000, 3, 0) | 左→南天门，右→人间 |
-| 南天门（考编） | (-2000, 3, 0) | 右→仙丹阁 |
-| 蟠桃园 | (3000, 3, 50) | 考编通过后传送 |
+| 场景 | 场景ID | 坐标 | 功能 |
+|------|--------|------|------|
+| 御膳房 | YiShanFang | (0, 3, 0) | 传菜打工 |
+| 炼丹洞天 | Alchemy | (1000, 3, 0) | 炼制丹药 |
+| 妖兽战场 | Beast | (2000, 3, 0) | 狩猎妖兽 |
+| 仙丹阁 | DanShop | (-1000, 3, 0) | 交易丹药 |
+| 家 | Home | (-500, 3, 0) | 炼化提升 |
 
 ### 场景管理
 
-- **SceneSetup.server.lua**：启动时创建所有场景的交互区域 Part 和传送阵 Part
-- **SceneManager.server.lua**：管理玩家出生位置和场景切换
-- **SceneConfig.luau**：集中管理所有场景的出生坐标
-- 传送阵是蓝色 Neon Part，带 TextLabel 标签，触摸即传送（1.5s 防抖动）
-- 所有交互区域 Part 都在 workspace 中，按场景坐标分散布置
+- **SceneSetup.server.lua**：启动时创建所有场景的交互区域 Part 和装饰元素（无传送阵）
+- **SceneManager.server.lua**：管理玩家出生位置和场景切换（通过 RemoteEvent）
+- **SceneConfig.luau**：集中管理所有场景的出生坐标、显示名称和描述
+- **场景切换方式**：通过 `SceneTeleportEvent` RemoteEvent（客户端 FireServer → 服务端传送）
+- **选择面板触发时机**：
+  1. **资源耗尽**：任务 Pick 时体力/精神不足 → 服务端 FireClient "ShowSceneChoice"
+  2. **能力提升**：属性升级时（身法/火候/仙力升级）→ 服务端 FireClient "ShowSceneChoice"
+  3. **手动切换**：客户端常驻按钮"切换场景" → 手动弹出选择面板
+
+### 场景选择面板
+
+- 由 `SceneChoiceUI.legacy.lua` 实现
+- 全屏遮罩 + 5 个场景卡片（2x3 网格布局）
+- 每个卡片显示场景名和描述
+- 当前所在场景置灰不可点击
+- 底部显示玩家当前状态（体力/精神/疲劳/火毒/戾气）
+- 状态触发原因（升级/资源不足）用绿色/红色标注
+- 点击卡片 → FireServer → 服务端 TeleportToScene → FireClient "SceneSwitched"
 
 ### 添加新场景
 
-1. 在 `SceneConfig.luau` 中添加 `SceneName = { SpawnPosition = Vector3.new(...) }`
-2. 在 `SceneSetup.server.lua` 中添加 `setupXxxScene()` 函数，创建交互区域和传送阵
-3. （可选）在 `SceneManager.server.lua` 的 `getSceneSpawnPosition` 中确认该场景可用
+1. 在 `SceneConfig.luau` 中添加 `SceneName = { SpawnPosition = Vector3.new(...), DisplayName = "...", Description = "..." }`
+2. 在 `SceneSetup.server.lua` 中添加 `setupXxxScene()` 函数，创建交互区域和装饰
+3. 在 `SceneChoiceUI.legacy.lua` 的 `SCENE_ORDER` 表中添加场景 ID
 
 ---
 
@@ -261,7 +294,7 @@ FireAction 支持的值：`Pick` / `Drop` / `Attack` / `Craft`
     -- 经济
     XianJing = 0, GongDe = 0, Risk = 10,
     -- 场景
-    CurrentScene = "Work", HasQuitJob = false,
+    CurrentScene = "YiShanFang", HasQuitJob = false,
     -- 即时状态
     Stamina = 100, Spirit = 100, Fatigue = 0,
     FirePoison = 0, Malice = 0,
@@ -361,8 +394,8 @@ TimeEvent 查找使用轮询方式（最多 60 秒，每秒重试），而不是
 ### 方法调用的 `:` 与 `.` 约定
 模块函数若用 `.` 定义（如 `function BeastNPC.SomeMethod()`），调用时必须用 `BeastNPC.SomeMethod()`，不可用 `self:SomeMethod()`。混用会导致参数错位和 bug。
 
-### 传送阵设计
-传送阵是 `workspace` 中的 Part，带 `TeleportTarget` Attribute，名称格式为 `TeleportTo<SceneName>`。触摸时触发场景切换（1.5s 防抖动）。SceneSetup 中的 `workspace.ChildAdded` 监听自动绑定新传送阵。
-
 ### 旧存档兼容
 DataManager 的 `__index = DEFAULT_DATA` 机制可自动填充旧存档中缺少的新字段。新增 DataManager 字段时只需加到 `DEFAULT_DATA` 表即可。
+
+### 场景选择面板客户端集成
+在 `TaskClient.local.luau` 中处理 `ShowSceneChoice` 事件时，通过 `FindFirstChild` 查找 SceneChoiceUI 模块（兼容 SSS 延迟同步），而非直接 `require`。其他 UI 模块（AlchemyUI）同样遵循此模式。

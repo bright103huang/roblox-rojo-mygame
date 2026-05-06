@@ -53,7 +53,22 @@ end
 -- ============================================================
 -- 处理服务器回执
 -- ============================================================
-TaskEvent.OnClientEvent:Connect(function(result)
+TaskEvent.OnClientEvent:Connect(function(result, extraData)
+	-- 特殊事件：场景选择面板（不含冒号格式）
+	if result == "ShowSceneChoice" then
+		local module = script.Parent:FindFirstChild("SceneChoiceUI")
+		if not module then
+			module = script.Parent:FindFirstChild("Client") and script.Parent.Client:FindFirstChild("SceneChoiceUI")
+		end
+		if module then
+			local sceneChoiceUI = require(module)
+			sceneChoiceUI:Open(extraData)
+		else
+			warn("⚠️ SceneChoiceUI 模块未加载，刷新 SSS 同步后重试")
+		end
+		return
+	end
+
 	-- 新版格式: "DropSuccess:Deliver", "DropFailed:Deliver" 等
 	local resultType, taskName = string.match(result, "^(%w+):(%w+)$")
 	if not resultType then
@@ -146,6 +161,14 @@ TaskEvent.OnClientEvent:Connect(function(result)
 			-- 更新 leaderstats 军衔显示（通过 Attribute 自动同步）
 			player:SetAttribute("MilitaryRank", result.NewRank)
 			player:SetAttribute("Merit", result.Merit)
+		end
+
+	elseif resultType == "SceneSwitched" then
+		-- 场景切换成功（taskName 即为场景名）
+		print("🚀 已切换到场景：" .. taskName)
+		-- 重置所有 carrying 状态
+		for _, state in pairs(playerState) do
+			state.carrying = false
 		end
 	end
 end)

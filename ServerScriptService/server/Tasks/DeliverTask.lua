@@ -32,15 +32,8 @@ local function refreshTables()
 end
 refreshTables()
 
--- workspace 新物体加入时补扫
-workspace.DescendantAdded:Connect(function(desc)
-	if desc.Name == "TableArea" then
-		table.insert(tables, desc)
-	end
-end)
-
 -- ============================================================
--- 指示器管理
+-- 指示器管理（必须在 assignOrder 之前定义）
 -- ============================================================
 local function clearAllIndicators()
 	for _, tableArea in ipairs(tables) do
@@ -89,7 +82,18 @@ local function assignOrder()
 	print("🎯 当前目标桌子ID：", currentTarget:GetAttribute("TableId"))
 end
 
--- 启动时分配首个目标
+-- workspace 新物体加入时补扫（SceneSetup 延迟创建，确保能捕获）
+workspace.DescendantAdded:Connect(function(desc)
+	if desc.Name == "TableArea" then
+		table.insert(tables, desc)
+		-- 如果还没有活跃订单，分配首个目标
+		if not currentTarget then
+			assignOrder()
+		end
+	end
+end)
+
+-- 启动时分配首个目标（如果已有桌子）
 assignOrder()
 
 -- ============================================================

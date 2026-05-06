@@ -27,7 +27,7 @@ local playerDataCache = {}
 local DEFAULT_DATA = {
 	XianJing = 0,
 	GongDe = 0,
-	CurrentScene = "Work",
+	CurrentScene = "YiShanFang",
 	HasQuitJob = false,
 	Risk = 10,
 	-- 废弃字段（保留兼容旧存档，代码中不再写入）
@@ -151,6 +151,8 @@ function DataManager:InitPlayer(player)
 	player:SetAttribute("Agility", data.Agility or 1)
 	player:SetAttribute("AlchemyLv", data.AlchemyLv or 1)
 	player:SetAttribute("Combat", data.Combat or 1)
+	-- 同步场景
+	player:SetAttribute("CurrentScene", data.CurrentScene or "YiShanFang")
 	-- 同步考编 & 天兵状态
 	player:SetAttribute("IsRecruited", data.IsRecruited or false)
 	player:SetAttribute("MilitaryRank", data.MilitaryRank or "天兵")
@@ -193,6 +195,8 @@ function DataManager:UpdateField(player, field, value)
 		or field == "FirePoison" or field == "Malice" then
 		-- 即时状态同步到 Attribute
 		player:SetAttribute(field, value)
+	elseif field == "CurrentScene" then
+		player:SetAttribute("CurrentScene", value)
 	elseif field == "Merit" or field == "MilitaryRank" then
 		-- 天兵功勋/军衔同步到 Attribute（StatusUI 读取）
 		player:SetAttribute(field, value)

@@ -2,6 +2,7 @@
 -- 文件：ServerScriptService.Server.Systems.TaskService.server.lua
 -- 功能：通用任务调度器 — 加载 TaskConfig，注册任务处理器，
 --       将客户端的交互事件路由到对应的处理器模块
+--       新增：资源耗尽检测、升级触发场景选择面板
 -- ============================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,6 +10,7 @@ local Players = game:GetService("Players")
 
 local DataManager = require(script.Parent.DataManager)
 local SpeedCalculator = require(script.Parent.SpeedCalculator)
+local StatusService = require(script.Parent.StatusService)
 local Config = require(ReplicatedStorage.Shared.Config)
 
 -- ============================================================
@@ -88,6 +90,31 @@ end
 loadHandlers()
 
 -- ============================================================
+-- 注册等级提升回调（触发场景选择面板）
+-- ============================================================
+StatusService.OnLevelUp = function(player, attrField, newLevel)
+	local nameMap = { Agility = "身法", AlchemyLv = "火候", Combat = "仙力" }
+	print("⬆ 升级触发场景选择：" .. player.Name .. " " .. (nameMap[attrField] or attrField) .. " Lv." .. newLevel)
+
+	-- 获取当前玩家数据用于选择面板
+	local data = DataManager:GetData(player)
+	if not data then return end
+
+	local sceneInfo = {
+		CurrentScene = data.CurrentScene,
+		Stamina = data.Stamina,
+		Spirit = data.Spirit,
+		Fatigue = data.Fatigue,
+		FirePoison = data.FirePoison,
+		Malice = data.Malice,
+		TriggerType = "LevelUp",
+		TriggerDetail = (nameMap[attrField] or attrField) .. " 提升至 Lv." .. newLevel,
+	}
+
+	TaskEvent:FireClient(player, "ShowSceneChoice", sceneInfo)
+end
+
+-- ============================================================
 -- 辅助：从 workspace 查找交互区域
 -- ============================================================
 local function findArea(partName, attrName, attrValue)
@@ -105,25 +132,39 @@ local function findArea(partName, attrName, attrValue)
 end
 
 -- ============================================================
--- 核心：客户端请求处理（统一入口，兼容新旧协议）
+-- 辅助：发送 ShowSceneChoice（资源耗尽时触发）
 -- ============================================================
--- 参数格式：
---   新版：action = "Pick:Deliver", contextData = { AreaName, AttrName?, AttrValue? }
---   旧版：action = "Pick",        legacyArg = nil
---   旧版：action = "Drop",        legacyArg = tableId (number)
+local function sendSceneChoice(player, reason)
+	local data = DataManager:GetData(player)
+	if not data then return end
+
+	local sceneInfo = {
+		CurrentScene = data.CurrentScene,
+		Stamina = data.Stamina,
+		Spirit = data.Spirit,
+		Fatigue = data.Fatigue,
+		FirePoison = data.FirePoison,
+		Malice = data.Malice,
+		TriggerType = "ResourceExhausted",
+		TriggerDetail = reason or "资源不足",
+	}
+
+	TaskEvent:FireClient(player, "ShowSceneChoice", sceneInfo)
+end
+
+-- ============================================================
+-- 核心：客户端请求处理
+-- ============================================================
 TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 	-- ----- 尝试解析 action 格式 -----
 	local actionType, taskName
 
 	if type(action) == "string" and string.find(action, ":") then
-		-- 新版格式 "Pick:Deliver"
 		actionType, taskName = string.match(action, "^(%w+):(%w+)$")
 	else
-		-- 旧版格式 — 默认当作 Deliver 任务处理
 		actionType = action
 		taskName = "Deliver"
 
-		-- 旧版 Drop 的第二个参数是 tableId → 转换为 contextData
 		if actionType == "Drop" and legacyArg ~= nil then
 			local tableId = legacyArg
 			contextData = {
@@ -151,6 +192,27 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 	-- 路由到处理器
 	-- ============================================================
 	if actionType == "Pick" then
+		-- 前置资源检查（TASK_COSTS 中值为负数，取绝对值检查）
+		local taskCosts = Config.Stats.TASK_COSTS[taskName]
+		if taskCosts then
+			local costs = {}
+			if taskCosts.Stamina then
+				costs.Stamina = math.abs(taskCosts.Stamina)
+			end
+			if taskCosts.Spirit then
+				costs.Spirit = math.abs(taskCosts.Spirit)
+			end
+			if next(costs) then
+				local canPerform, reason = StatusService:CanPerformTask(player, costs)
+				if not canPerform then
+					print("❌ " .. player.Name .. " " .. taskName .. " 资源不足：" .. tostring(reason))
+					sendSceneChoice(player, reason)
+					TaskEvent:FireClient(player, "PickFailed:" .. taskName)
+					return
+				end
+			end
+		end
+
 		local ok = handler.OnPlayerPickup(player, nil)
 		if ok then
 			TaskEvent:FireClient(player, "PickSuccess:" .. taskName)
@@ -159,7 +221,6 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		end
 
 	elseif actionType == "Drop" then
-		-- 从 contextData 还原 area 引用
 		local area = nil
 		if contextData then
 			area = findArea(
@@ -177,14 +238,12 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		elseif result == "NotCarrying" then
 			TaskEvent:FireClient(player, "DropFailed:" .. taskName)
 		elseif result == "OpenUI" then
-			-- 特殊结果：UI 已在 OnPlayerDrop 中通过 TaskEvent 触发
-			-- 无需额外操作
+			-- UI 已在 OnPlayerDrop 中触发
 		else
 			TaskEvent:FireClient(player, "DropFailed:" .. taskName)
 		end
 
 	elseif actionType == "Craft" then
-		-- 炼丹操作：由客户端 UI 触发
 		if handler.OnCraft then
 			local ok, result = handler.OnCraft(player, contextData)
 			if ok and result then
@@ -201,7 +260,6 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		end
 
 	elseif actionType == "Attack" then
-		-- 妖兽攻击操作
 		if handler.OnAttack then
 			local ok, result = handler.OnAttack(player, contextData)
 			if ok then
@@ -219,9 +277,9 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 end)
 
 -- ============================================================
--- 回退出生点管理（仅当 SceneManager 不存在时）
+-- 回退出生点管理
 -- ============================================================
-local SPAWN_NAME = "WorkSpawn"
+local SPAWN_NAME = "YiShanFangSpawn"
 
 local sceneManager = script.Parent:FindFirstChild("SceneManager")
 if not sceneManager then
