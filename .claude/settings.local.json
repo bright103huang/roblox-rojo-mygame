@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f default.project.json sourcemap.json)",
+      "Bash(ls -la *.json)"
+    ]
+  }
+}
