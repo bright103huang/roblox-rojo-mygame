@@ -3,7 +3,7 @@
 ## 项目概况
 
 - **同步方式**：Roblox Studio SSS（文件直连，不使用 Rojo）
-- **文件命名**：客户端脚本使用 `.legacy.lua` 后缀（RunContext = Legacy）；被 `require` 的 UI 模块使用 `.lua` 后缀（ModuleScript）
+- **文件命名**：客户端脚本使用 `.local.lua` 后缀（RunContext = Legacy）；被 `require` 的 UI 模块使用 `.lua` 后缀（ModuleScript）
 - **语言**：Luau（部分文件使用 `.luau` 扩展名）
 - **场景**：多场景沙盒，通过场景选择面板切换（无物理传送阵）
 
@@ -113,11 +113,11 @@ ChaosEventService (大闹天宫)
 ### 客户端 UI
 
 ```
-StatusUI.legacy.lua   → 右上角 5 状态条 + 属性等级 + 红线警告
-AlchemyUI.lua         → 药材选择面板 + 配方提示 + 炼制结果弹窗
-DayNightUI.legacy.lua → 左上角色时辰 + 昼夜图标
-ShopUI.legacy.lua     → 仙丹阁商店面板
-ChaosEventUI.legacy.lua → 叙事选择弹窗
+StatusUI.local.lua     → 左下角 5 状态条 + 属性等级 + 红线警告
+AlchemyUI.lua          → 药材选择面板 + 配方提示 + 炼制结果弹窗
+DayNightUI.local.lua   → 左上角色时辰 + 昼夜图标
+ShopUI.local.lua       → 仙丹阁商店面板
+ChaosEventUI.local.lua → 叙事选择弹窗
 SceneChoiceUI.lua      → 场景选择面板（资源耗尽/升级/手动触发时弹出）
 ```
 
@@ -155,11 +155,11 @@ SceneChoiceUI.lua      → 场景选择面板（资源耗尽/升级/手动触发
 | `Tasks/PatrolTask.lua` | 蟠桃园巡逻任务 |
 | `Tasks/ExpelMonkeyTask.lua` | 驱赶猴妖任务 |
 | `Client/TaskClient.local.luau` | 客户端：读取 TaskConfig、绑定触摸事件、处理回执 |
-| `Client/StatusUI.legacy.lua` | 5 状态条 + 等级 + 红线警告 UI |
+| `Client/StatusUI.local.lua` | 5 状态条 + 等级 + 红线警告 UI |
 | `Client/AlchemyUI.lua` | 炼丹面板：药材选择、配方提示、结果弹窗 |
-| `Client/DayNightUI.legacy.lua` | 时辰 + 昼夜显示 |
-| `Client/ShopUI.legacy.lua` | 仙丹阁商店面板 |
-| `Client/ChaosEventUI.legacy.lua` | 叙事选择弹窗 |
+| `Client/DayNightUI.local.lua` | 时辰 + 昼夜显示 |
+| `Client/ShopUI.local.lua` | 仙丹阁商店面板 |
+| `Client/ChaosEventUI.local.lua` | 叙事选择弹窗 |
 | `Client/SceneChoiceUI.lua` | 场景选择面板（资源耗尽/升级/手动触发） |
 | `Client/StoryPlayer.local.luau` | 叙事播放器 |
 | `Client/StoryIntro.local.luau` | 游戏开场叙事 |
@@ -406,8 +406,9 @@ Malice 戾气             资源: XianJing 仙晶, GongDe 功德
 ```
 
 Attribute 同步规则：
-- Stamina/Spirit/Fatigue/FirePoison/Malice → `player:SetAttribute()` 供客户端 StatusUI 读取
-- Agility/AlchemyLv/Combat/Merit/MilitaryRank → leaderstats + Attribute 双同步
+- Stamina/Spirit/Fatigue/FirePoison/Malice/Risk → `player:SetAttribute()` 供客户端 StatusUI 读取
+- Agility/AlchemyLv/Combat → `player:SetAttribute()` 供 StatusUI 读取
+- Merit/MilitaryRank → leaderstats + Attribute 双同步
 
 ### 旧存档兼容
 `loadPlayerData()` 使用 `setmetatable(data, { __index = DEFAULT_DATA })` 确保旧存档中新字段自动获取默认值。
@@ -470,7 +471,9 @@ Attribute 同步规则：
 ## 重要注意事项
 
 ### 客户端脚本 RunContext
-独立运行的 UI 脚本（StatusUI、DayNightUI、ShopUI、ChaosEventUI）使用 `.legacy.lua` 后缀，在 Studio 中 RunContext 设为 Legacy。被其他脚本 `require` 的 UI 模块（AlchemyUI、SceneChoiceUI）必须使用 `.lua` 后缀（ModuleScript），否则 `require` 会因类型不匹配而失败。不要在代码中通过 `pcall` 设置 RunContext，无效。
+独立运行的 UI 脚本（StatusUI、DayNightUI、ShopUI、ChaosEventUI）使用 `.local.lua` 后缀（SSS 识别为 LocalScript + Legacy RunContext）。被其他脚本 `require` 的 UI 模块（AlchemyUI、SceneChoiceUI）必须使用 `.lua` 后缀（ModuleScript），否则 `require` 会因类型不匹配而失败。不要在代码中通过 `pcall` 设置 RunContext，无效。
+
+注意：`.client.lua` 后缀在 StarterPlayerScripts 中会被设为 NonLegacy RunContext，导致脚本执行两次（UI 重复创建、状态混乱）。必须使用 `.local.lua`。
 
 ### StatusUI 容错模式
 - `waitForAttributes()` 带超时（15 秒最大等待），防止服务器数据未就绪时死循环

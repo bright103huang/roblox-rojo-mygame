@@ -132,13 +132,6 @@ function DataManager:InitPlayer(player)
 		if gold then gold.Value = data.XianJing end
 		local merit = leaderstats:FindFirstChild("功德")
 		if merit then merit.Value = data.GongDe end
-		-- 同步身法/火候/仙力等级
-		local agilityStat = leaderstats:FindFirstChild("身法")
-		if agilityStat then agilityStat.Value = data.Agility or 1 end
-		local alchemyStat = leaderstats:FindFirstChild("火候")
-		if alchemyStat then alchemyStat.Value = data.AlchemyLv or 1 end
-		local combatStat = leaderstats:FindFirstChild("仙力")
-		if combatStat then combatStat.Value = data.Combat or 1 end
 	end
 
 	-- 同步所有即时状态为 Attribute（客户端可读）
@@ -182,13 +175,7 @@ function DataManager:UpdateField(player, field, value)
 			end
 		end
 	elseif field == "Agility" or field == "AlchemyLv" or field == "Combat" then
-		-- 永久属性等级同步到 leaderstats 和 attribute
-		local leaderstats = player:FindFirstChild("leaderstats")
-		if leaderstats then
-			local nameMap = { Agility = "身法", AlchemyLv = "火候", Combat = "仙力" }
-			local stat = leaderstats:FindFirstChild(nameMap[field])
-			if stat then stat.Value = value end
-		end
+		-- 永久属性等级同步到 Attribute（StatusUI 读取）
 		player:SetAttribute(field, value)
 	elseif field == "Risk" then
 		player:SetAttribute("Risk", value)

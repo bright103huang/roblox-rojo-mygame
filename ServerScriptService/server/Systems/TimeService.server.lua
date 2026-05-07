@@ -55,6 +55,46 @@ local isNight = false
 local lastMidnightTick = 0  -- 防止重复结算
 
 -- ============================================================
+-- 广播时间到单个玩家
+-- ============================================================
+local function broadcastTimeToPlayer(player, hour, hourName, night)
+	local timeData = {
+		Hour = hour,
+		HourName = hourName,
+		IsNight = night,
+	}
+	player:SetAttribute("GameHour", hour)
+	player:SetAttribute("IsNight", night)
+	if TimeEvent then
+		TimeEvent:FireClient(player, timeData)
+	end
+end
+
+-- 对所有在线玩家立即广播初始时间
+local function broadcastTimeToAll()
+	local hourIndex = math.floor(currentGameHour / 2) + 1
+	if hourIndex > 12 then hourIndex = 1 end
+	local hourName = HOUR_NAMES[hourIndex] or (tostring(currentGameHour) .. ":00")
+	for _, player in ipairs(Players:GetPlayers()) do
+		task.spawn(function()
+			broadcastTimeToPlayer(player, currentGameHour, hourName, isNight)
+		end)
+	end
+end
+
+-- 玩家加入时立即同步时间
+local function onPlayerAdded(player)
+	local hourIndex = math.floor(currentGameHour / 2) + 1
+	if hourIndex > 12 then hourIndex = 1 end
+	local hourName = HOUR_NAMES[hourIndex] or (tostring(currentGameHour) .. ":00")
+	broadcastTimeToPlayer(player, currentGameHour, hourName, isNight)
+end
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+-- 对已有玩家广播初始时间
+task.spawn(broadcastTimeToAll)
+
+-- ============================================================
 -- 核心循环
 -- ============================================================
 task.spawn(function()
@@ -117,33 +157,28 @@ task.spawn(function()
 						-- 更新速度
 						SpeedCalculator.Apply(player)
 
-						-- 通知客户端
-						local data = {
+						-- 通知客户端（含疲劳结算信息）
+						local extraData = {
 							Hour = currentGameHour,
 							HourName = hourName,
 							IsNight = isNight,
 							FatigueReduction = reduction,
 							TotalDays = data.TotalDays,
 						}
+						player:SetAttribute("GameHour", currentGameHour)
+						player:SetAttribute("IsNight", isNight)
 						if TimeEvent then
-							TimeEvent:FireClient(player, data)
+							TimeEvent:FireClient(player, extraData)
 						end
 					end
 				end)
 			end
 		end
 
-		-- 广播时间变化
-		local timeData = {
-			Hour = currentGameHour,
-			HourName = hourName,
-			IsNight = isNight,
-		}
+		-- 广播时间变化（含 Attribute 同步）
 		for _, player in ipairs(Players:GetPlayers()) do
 			task.spawn(function()
-				if TimeEvent then
-					TimeEvent:FireClient(player, timeData)
-				end
+				broadcastTimeToPlayer(player, currentGameHour, hourName, isNight)
 			end)
 		end
 	end

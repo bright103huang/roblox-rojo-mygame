@@ -1,6 +1,7 @@
 -- ============================================================
--- 文件：StarterPlayer.StarterPlayerScripts.Client.StatusUI.client.lua
--- 功能：状态 UI — 实时显示 5 个即时状态 + 属性等级
+-- 文件：StarterPlayer.StarterPlayerScripts.Client.StatusUI.local.lua
+-- 功能：状态 UI — 实时显示即时状态 + 属性等级
+-- 布局：左下角横版，2 行 x 3 列
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -11,11 +12,10 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- ============================================================
 -- 等待 player 初始化完成（确保 Attributes 可用）
--- 带超时保护，最多等 15 秒
 -- ============================================================
 local function waitForAttributes()
 	for _, name in ipairs({ "Stamina", "Spirit", "Fatigue", "FirePoison", "Malice" }) do
-		local timeout = 60  -- 60 * 0.5s = 30s 超时保护
+		local timeout = 60
 		repeat
 			task.wait(0.5)
 			timeout -= 1
@@ -47,7 +47,7 @@ local COLORS = {
 }
 
 -- ============================================================
--- 创建 UI
+-- 创建 UI — 左下角横版布局
 -- ============================================================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "StatusUI"
@@ -57,8 +57,8 @@ screenGui.Parent = playerGui
 -- 主面板
 local frame = Instance.new("Frame")
 frame.Name = "StatusFrame"
-frame.Size = UDim2.new(0, 200, 0, 300)
-frame.Position = UDim2.new(1, -212, 0, 60)
+frame.Size = UDim2.new(0, 540, 0, 130)
+frame.Position = UDim2.new(0, 12, 1, -142)  -- 左下角
 frame.BackgroundColor3 = COLORS.Bg
 frame.BackgroundTransparency = 0.35
 frame.BorderSizePixel = 0
@@ -73,34 +73,14 @@ title.Name = "Title"
 title.Size = UDim2.new(1, -12, 0, 22)
 title.Position = UDim2.new(0, 6, 0, 4)
 title.BackgroundTransparency = 1
-title.Text = "📊 状态"
+title.Text = "状态"
 title.TextColor3 = COLORS.White
 title.TextSize = 14
 title.Font = Enum.Font.SourceSansBold
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = frame
 
--- 当前场景名（右上角）
-local SCENE_NAMES = {
-	YiShanFang = "御膳房",
-	Alchemy = "炼丹洞天",
-	Beast = "妖兽战场",
-	DanShop = "仙丹阁",
-	Home = "家",
-}
-local sceneLabel = Instance.new("TextLabel")
-sceneLabel.Name = "SceneName"
-sceneLabel.Size = UDim2.new(0, 80, 0, 18)
-sceneLabel.Position = UDim2.new(1, -85, 0, 6)
-sceneLabel.BackgroundTransparency = 1
-sceneLabel.Text = ""
-sceneLabel.TextColor3 = COLORS.Gold
-sceneLabel.TextSize = 11
-sceneLabel.Font = Enum.Font.SourceSansBold
-sceneLabel.TextXAlignment = Enum.TextXAlignment.Right
-sceneLabel.Parent = frame
-
--- 状态条配置
+-- 横版状态条布局参数
 local BAR_CONFIGS = {
 	{ Key = "Stamina", Label = "体力", Color = COLORS.Stamina, DangerThreshold = nil },
 	{ Key = "Spirit", Label = "精神", Color = COLORS.Spirit, DangerThreshold = nil },
@@ -112,27 +92,32 @@ local BAR_CONFIGS = {
 		CriticalColor = Color3.fromRGB(255, 50, 50), CriticalThreshold = 60,
 		RampageColor = Color3.fromRGB(255, 0, 0), RampageThreshold = 80 },
 }
-
-local Y_START = 28
-local ROW_HEIGHT = 30
-local LABEL_WIDTH = 40
-local BAR_WIDTH = 110
+local BAR_COLS = 3
+local BAR_WIDTH = 105
 local BAR_HEIGHT = 14
-local PCT_WIDTH = 36
+local BAR_LABEL_W = 30
+local BAR_VAL_W = 28
+local BAR_CELL_W = 172
+local BAR_ROW1_Y = 24
+local BAR_ROW2_Y = 48
+local BAR_X_START = 6
 
 local barObjects = {}
 
 for i, cfg in ipairs(BAR_CONFIGS) do
-	local yPos = Y_START + (i - 1) * ROW_HEIGHT
+	local row = (i - 1) // BAR_COLS   -- 0 或 1
+	local col = (i - 1) % BAR_COLS    -- 0, 1, 2
+	local xPos = BAR_X_START + col * BAR_CELL_W
+	local yPos = row == 0 and BAR_ROW1_Y or BAR_ROW2_Y
 
 	-- 标签
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0, LABEL_WIDTH, 0, 18)
-	label.Position = UDim2.new(0, 6, 0, yPos)
+	label.Size = UDim2.new(0, BAR_LABEL_W, 0, 16)
+	label.Position = UDim2.new(0, xPos, 0, yPos)
 	label.BackgroundTransparency = 1
 	label.Text = cfg.Label
 	label.TextColor3 = COLORS.White
-	label.TextSize = 13
+	label.TextSize = 12
 	label.Font = Enum.Font.SourceSansBold
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = frame
@@ -140,7 +125,7 @@ for i, cfg in ipairs(BAR_CONFIGS) do
 	-- 条背景
 	local barBg = Instance.new("Frame")
 	barBg.Size = UDim2.new(0, BAR_WIDTH, 0, BAR_HEIGHT)
-	barBg.Position = UDim2.new(0, 48, 0, yPos + 2)
+	barBg.Position = UDim2.new(0, xPos + BAR_LABEL_W, 0, yPos + 1)
 	barBg.BackgroundColor3 = COLORS.BarBg
 	barBg.BorderSizePixel = 0
 	barBg.Parent = frame
@@ -158,16 +143,16 @@ for i, cfg in ipairs(BAR_CONFIGS) do
 	barFillCorner.CornerRadius = UDim.new(0, 4)
 	barFillCorner.Parent = barFill
 
-	-- 百分比文字
+	-- 数值文字
 	local pctLabel = Instance.new("TextLabel")
-	pctLabel.Size = UDim2.new(0, PCT_WIDTH, 0, 18)
-	pctLabel.Position = UDim2.new(0, 160, 0, yPos)
+	pctLabel.Size = UDim2.new(0, BAR_VAL_W, 0, 16)
+	pctLabel.Position = UDim2.new(0, xPos + BAR_LABEL_W + BAR_WIDTH + 2, 0, yPos)
 	pctLabel.BackgroundTransparency = 1
 	pctLabel.Text = "0"
 	pctLabel.TextColor3 = COLORS.White
-	pctLabel.TextSize = 12
+	pctLabel.TextSize = 11
 	pctLabel.Font = Enum.Font.SourceSans
-	pctLabel.TextXAlignment = Enum.TextXAlignment.Right
+	pctLabel.TextXAlignment = Enum.TextXAlignment.Left
 	pctLabel.Parent = frame
 
 	barObjects[cfg.Key] = {
@@ -177,11 +162,24 @@ for i, cfg in ipairs(BAR_CONFIGS) do
 	}
 end
 
--- 等级显示行
-local levelY = Y_START + #BAR_CONFIGS * ROW_HEIGHT + 2
+-- 文字信息行
+local INFO_Y1 = 72   -- 等级 + 场景
+local INFO_Y2 = 92   -- 警告 + 风险等级
+local INFO_Y3 = 110  -- 考编 / 天兵
+
+-- 场景名映射
+local SCENE_NAMES = {
+	YiShanFang = "御膳房",
+	Alchemy = "炼丹洞天",
+	Beast = "妖兽战场",
+	DanShop = "仙丹阁",
+	Home = "家",
+}
+
+-- 等级行
 local levelText = Instance.new("TextLabel")
-levelText.Size = UDim2.new(1, -12, 0, 20)
-levelText.Position = UDim2.new(0, 6, 0, levelY)
+levelText.Size = UDim2.new(1, -12, 0, 18)
+levelText.Position = UDim2.new(0, 6, 0, INFO_Y1)
 levelText.BackgroundTransparency = 1
 levelText.Text = "身法 1  火候 1  仙力 1"
 levelText.TextColor3 = COLORS.Gold
@@ -190,22 +188,23 @@ levelText.Font = Enum.Font.SourceSansBold
 levelText.TextXAlignment = Enum.TextXAlignment.Left
 levelText.Parent = frame
 
--- 风险等级文字
-local riskLevelLabel = Instance.new("TextLabel")
-riskLevelLabel.Name = "RiskLevel"
-riskLevelLabel.Size = UDim2.new(1, -12, 0, 16)
-riskLevelLabel.Position = UDim2.new(0, 6, 0, levelY + 60)
-riskLevelLabel.BackgroundTransparency = 1
-riskLevelLabel.Text = ""
-riskLevelLabel.TextSize = 12
-riskLevelLabel.Font = Enum.Font.SourceSansBold
-riskLevelLabel.TextXAlignment = Enum.TextXAlignment.Left
-riskLevelLabel.Parent = frame
+-- 场景名
+local sceneLabel = Instance.new("TextLabel")
+sceneLabel.Name = "SceneName"
+sceneLabel.Size = UDim2.new(0, 100, 0, 18)
+sceneLabel.Position = UDim2.new(1, -105, 0, INFO_Y1)
+sceneLabel.BackgroundTransparency = 1
+sceneLabel.Text = ""
+sceneLabel.TextColor3 = COLORS.Gold
+sceneLabel.TextSize = 11
+sceneLabel.Font = Enum.Font.SourceSansBold
+sceneLabel.TextXAlignment = Enum.TextXAlignment.Right
+sceneLabel.Parent = frame
 
--- 红 line 警告文字（默认隐藏）
+-- 警告文字行
 local warningText = Instance.new("TextLabel")
-warningText.Size = UDim2.new(1, -12, 0, 18)
-warningText.Position = UDim2.new(0, 6, 0, levelY + 20)
+warningText.Size = UDim2.new(0.7, -6, 0, 18)
+warningText.Position = UDim2.new(0, 6, 0, INFO_Y2)
 warningText.BackgroundTransparency = 1
 warningText.Text = ""
 warningText.TextColor3 = COLORS.Red
@@ -214,11 +213,22 @@ warningText.Font = Enum.Font.SourceSansBold
 warningText.TextXAlignment = Enum.TextXAlignment.Left
 warningText.Parent = frame
 
--- 考编指数显示行
-local examY = levelY + 40
+-- 风险等级文字
+local riskLevelLabel = Instance.new("TextLabel")
+riskLevelLabel.Name = "RiskLevel"
+riskLevelLabel.Size = UDim2.new(0.3, -6, 0, 18)
+riskLevelLabel.Position = UDim2.new(0.7, 6, 0, INFO_Y2)
+riskLevelLabel.BackgroundTransparency = 1
+riskLevelLabel.Text = ""
+riskLevelLabel.TextSize = 11
+riskLevelLabel.Font = Enum.Font.SourceSansBold
+riskLevelLabel.TextXAlignment = Enum.TextXAlignment.Right
+riskLevelLabel.Parent = frame
+
+-- 考编指数行
 local examText = Instance.new("TextLabel")
-examText.Size = UDim2.new(1, -12, 0, 18)
-examText.Position = UDim2.new(0, 6, 0, examY)
+examText.Size = UDim2.new(0.6, -6, 0, 18)
+examText.Position = UDim2.new(0, 6, 0, INFO_Y3)
 examText.BackgroundTransparency = 1
 examText.Text = ""
 examText.TextColor3 = COLORS.Gold
@@ -228,10 +238,9 @@ examText.TextXAlignment = Enum.TextXAlignment.Left
 examText.Parent = frame
 
 -- 天兵信息行
-local soldierY = examY + 18
 local soldierText = Instance.new("TextLabel")
-soldierText.Size = UDim2.new(1, -12, 0, 18)
-soldierText.Position = UDim2.new(0, 6, 0, soldierY)
+soldierText.Size = UDim2.new(0.4, -6, 0, 18)
+soldierText.Position = UDim2.new(0.6, 6, 0, INFO_Y3)
 soldierText.BackgroundTransparency = 1
 soldierText.Text = ""
 soldierText.TextColor3 = Color3.fromRGB(100, 200, 255)
@@ -259,19 +268,16 @@ RunService.RenderStepped:Connect(function()
 		local maxVal = 100
 		local pct = math.clamp(value / maxVal, 0, 1)
 
-		-- 疲劳反向显示（数值越高，条越短）
+		-- 疲劳反向显示
 		if cfg.Invert then
 			pct = 1 - pct
 		end
 
 		obj.Fill.Size = UDim2.new(pct, 0, 1, 0)
-
-		-- 数值显示
 		obj.PctLabel.Text = tostring(math.floor(value))
 
 		-- 危险阈值颜色变化
 		if key == "Risk" then
-			-- Risk 特殊颜色逻辑
 			if value >= 80 then
 				obj.Fill.BackgroundColor3 = cfg.RampageColor or Color3.fromRGB(255, 0, 0)
 			elseif value >= 60 then
@@ -303,7 +309,7 @@ RunService.RenderStepped:Connect(function()
 
 	-- 警告文字
 	if #warnings > 0 then
-		warningText.Text = "⚠️ 警告：" .. table.concat(warnings, " | ")
+		warningText.Text = "警告：" .. table.concat(warnings, " | ")
 	else
 		warningText.Text = ""
 	end
@@ -320,13 +326,13 @@ RunService.RenderStepped:Connect(function()
 	else
 		riskLevel, riskColor = "风平浪静", Color3.fromRGB(80, 200, 80)
 	end
-	riskLevelLabel.Text = "☯ " .. riskLevel
+	riskLevelLabel.Text = riskLevel
 	riskLevelLabel.TextColor3 = riskColor
 
 	-- 链式反应警告
 	local chainEvents = player:GetAttribute("ChainEvents") or ""
 	if chainEvents ~= "" then
-		warningText.Text = "⚠️ " .. chainEvents
+		warningText.Text = chainEvents
 		warningText.TextColor3 = Color3.fromRGB(255, 100, 0)
 	end
 
@@ -344,7 +350,7 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- 考编指数计算（本地估算，精确值以服务端为准）
+	-- 考编指数计算
 	local aLv = player:GetAttribute("Agility") or 1
 	local alLv = player:GetAttribute("AlchemyLv") or 1
 	local cLv = player:GetAttribute("Combat") or 1
@@ -359,20 +365,20 @@ RunService.RenderStepped:Connect(function()
 	local minStats = 6
 
 	if player:GetAttribute("IsRecruited") == true then
-		examText.Text = "🏯 天兵在编 考编指数 " .. examIndex
+		examText.Text = "天兵在编 考编指数 " .. examIndex
 		examText.TextColor3 = Color3.fromRGB(100, 200, 255)
 	else
 		local needs = {}
-		if aLv < minStats then table.insert(needs, "身法" .. aLv .. "→" .. minStats) end
-		if alLv < minStats then table.insert(needs, "火候" .. alLv .. "→" .. minStats) end
-		if cLv < minStats then table.insert(needs, "仙力" .. cLv .. "→" .. minStats) end
-		if gdVal < 100 then table.insert(needs, "功德" .. math.floor(gdVal) .. "→100") end
+		if aLv < minStats then table.insert(needs, "身法" .. aLv .. "->" .. minStats) end
+		if alLv < minStats then table.insert(needs, "火候" .. alLv .. "->" .. minStats) end
+		if cLv < minStats then table.insert(needs, "仙力" .. cLv .. "->" .. minStats) end
+		if gdVal < 100 then table.insert(needs, "功德" .. math.floor(gdVal) .. "->100") end
 
 		if #needs > 0 then
-			examText.Text = "📋 考编 " .. examIndex .. "/" .. passThreshold .. " 缺：" .. table.concat(needs, " ")
+			examText.Text = "考编 " .. examIndex .. "/" .. passThreshold .. " 缺：" .. table.concat(needs, " ")
 			examText.TextColor3 = COLORS.Gold
 		else
-			examText.Text = "⭐ 考编 " .. examIndex .. "/" .. passThreshold .. " 可考核！去南天门"
+			examText.Text = "考编 " .. examIndex .. "/" .. passThreshold .. " 可考核！"
 			examText.TextColor3 = Color3.fromRGB(80, 255, 80)
 		end
 	end
@@ -381,7 +387,7 @@ RunService.RenderStepped:Connect(function()
 	if player:GetAttribute("IsRecruited") == true then
 		local rank = player:GetAttribute("MilitaryRank") or "天兵"
 		local merit = player:GetAttribute("Merit") or 0
-		soldierText.Text = "⚔ " .. rank .. " | 功勋 " .. merit .. "/100"
+		soldierText.Text = rank .. " | 功勋 " .. merit .. "/100"
 		soldierText.Visible = true
 	else
 		soldierText.Visible = false
@@ -389,8 +395,8 @@ RunService.RenderStepped:Connect(function()
 
 end)  -- pcall
 if not success then
-	warn("📊 StatusUI 更新错误:", err)
+	warn("StatusUI 更新错误:", err)
 end
 end)  -- RenderStepped
 
-print("📊 StatusUI 已启动")
+print("StatusUI 已启动")
