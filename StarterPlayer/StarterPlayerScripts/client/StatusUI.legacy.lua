@@ -80,6 +80,26 @@ title.Font = Enum.Font.SourceSansBold
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = frame
 
+-- 当前场景名（右上角）
+local SCENE_NAMES = {
+	YiShanFang = "御膳房",
+	Alchemy = "炼丹洞天",
+	Beast = "妖兽战场",
+	DanShop = "仙丹阁",
+	Home = "家",
+}
+local sceneLabel = Instance.new("TextLabel")
+sceneLabel.Name = "SceneName"
+sceneLabel.Size = UDim2.new(0, 80, 0, 18)
+sceneLabel.Position = UDim2.new(1, -85, 0, 6)
+sceneLabel.BackgroundTransparency = 1
+sceneLabel.Text = ""
+sceneLabel.TextColor3 = COLORS.Gold
+sceneLabel.TextSize = 11
+sceneLabel.Font = Enum.Font.SourceSansBold
+sceneLabel.TextXAlignment = Enum.TextXAlignment.Right
+sceneLabel.Parent = frame
+
 -- 状态条配置
 local BAR_CONFIGS = {
 	{ Key = "Stamina", Label = "体力", Color = COLORS.Stamina, DangerThreshold = nil },
@@ -249,6 +269,10 @@ RunService.RenderStepped:Connect(function()
 	levelText.Text = "身法 " .. tostring(agility)
 		.. "  火候 " .. tostring(alchemyLv)
 		.. "  仙力 " .. tostring(combat)
+
+	-- 更新当前场景名
+	local curSceneId = player:GetAttribute("CurrentScene") or ""
+	sceneLabel.Text = SCENE_NAMES[curSceneId] or curSceneId
 
 	-- 警告文字
 	if #warnings > 0 then
