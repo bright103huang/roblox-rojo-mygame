@@ -34,11 +34,15 @@ function BeastTask.OnPlayerPickup(player, area)
 		return false
 	end
 
-	-- 体力检查
-	local canPerform, reason = StatusService:CanPerformTask(player, { Stamina = 25 })
-	if not canPerform then
-		print("❌ " .. player.Name .. " 狩猎失败：" .. tostring(reason))
-		return false
+	-- 体力检查（从 StatsConfig 读取）
+	local taskCosts = StatusService:GetTaskCosts("Beast")
+	local actionCost = taskCosts and taskCosts.ActionCost
+	if actionCost then
+		local canPerform, reason = StatusService:CanPerformTask(player, actionCost)
+		if not canPerform then
+			print("❌ " .. player.Name .. " 狩猎失败：" .. tostring(reason))
+			return false
+		end
 	end
 
 	-- 根据 Combat 等级决定妖兽 tier
@@ -86,13 +90,18 @@ function BeastTask.OnAttack(player, contextData)
 	end
 
 	if result.Killed then
-		-- 击杀奖励：状态消耗 + 收益
-		StatusService:ApplyCosts(player, {
-			Stamina = -25,
-			Malice = 10,
-			CombatExp = 10,
-			XianJing = 25,
-		})
+		-- 击杀奖励：状态消耗 + 收益（从 StatsConfig 读取）
+		local taskCosts = StatusService:GetTaskCosts("Beast")
+		if taskCosts and taskCosts.ApplyCost then
+			StatusService:ApplyCosts(player, taskCosts.ApplyCost)
+		else
+			StatusService:ApplyCosts(player, {
+				Stamina = -25,
+				Malice = 10,
+				CombatExp = 10,
+				XianJing = 25,
+			})
+		end
 		print("⚔ " .. player.Name .. " 击杀了妖兽！")
 	end
 

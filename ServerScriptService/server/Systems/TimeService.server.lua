@@ -55,16 +55,44 @@ local isNight = false
 local lastMidnightTick = 0  -- 防止重复结算
 
 -- ============================================================
+-- 获取当前时辰效率修正
+-- ============================================================
+local function getCurrentTimeModifier()
+	local hour = currentGameHour
+	local modifiers = Config.Stats.TIME_MODIFIERS
+	for _, mod in ipairs(modifiers) do
+		if hour >= mod[1] and hour < mod[2] then
+			return {
+				TaskEff = mod[3],
+				ShopOpen = mod[4],
+				RestEff = mod[5],
+				Label = mod[6],
+			}
+		end
+	end
+	-- Default (shouldn't reach here if hours 0-24 are fully covered)
+	return { TaskEff = 1.0, ShopOpen = false, RestEff = 1.0, Label = "" }
+end
+
+-- ============================================================
 -- 广播时间到单个玩家
 -- ============================================================
 local function broadcastTimeToPlayer(player, hour, hourName, night)
+	local modifier = getCurrentTimeModifier()
 	local timeData = {
 		Hour = hour,
 		HourName = hourName,
 		IsNight = night,
+		TimeEff = modifier.TaskEff,
+		ShopOpen = modifier.ShopOpen,
+		RestEff = modifier.RestEff,
+		TimeLabel = modifier.Label,
 	}
 	player:SetAttribute("GameHour", hour)
 	player:SetAttribute("IsNight", night)
+	player:SetAttribute("TimeEff", modifier.TaskEff)
+	player:SetAttribute("ShopOpen", modifier.ShopOpen and 1 or 0)
+	player:SetAttribute("RestEff", modifier.RestEff)
 	if TimeEvent then
 		TimeEvent:FireClient(player, timeData)
 	end
@@ -189,4 +217,5 @@ print("⏰ TimeService 已启动（" .. CYCLE_MINUTES .. " 分钟/天）")
 return {
 	GetHour = function() return currentGameHour end,
 	IsNight = function() return isNight end,
+	GetTimeModifier = getCurrentTimeModifier,
 }

@@ -134,11 +134,15 @@ function ExpelMonkeyTask.OnPlayerPickup(player, _area)
 	local data = DataManager:GetData(player)
 	if not data then return false end
 
-	-- 体力检查
-	local canPerform, reason = StatusService:CanPerformTask(player, { Stamina = 8 })
-	if not canPerform then
-		print("  " .. player.Name .. " 驱猴失败：" .. tostring(reason))
-		return false
+	-- 体力检查（从 StatsConfig 读取）
+	local taskCosts = StatusService:GetTaskCosts("ExpelMonkey")
+	local actionCost = taskCosts and taskCosts.ActionCost
+	if actionCost then
+		local canPerform, reason = StatusService:CanPerformTask(player, actionCost)
+		if not canPerform then
+			print("  " .. player.Name .. " 驱猴失败：" .. tostring(reason))
+			return false
+		end
 	end
 
 	-- 检查玩家是否已有活跃的猴子（防止刷取）
@@ -201,29 +205,27 @@ function ExpelMonkeyTask.OnPlayerDrop(player, area)
 	end
 	activeMonkeys[monkeyId] = nil
 
-	-- 扣除体力
-	StatusService:ApplyCosts(player, {
-		Stamina = -8,
-	})
-
-	-- 发放功勋
-	MeritService.AddMerit(player, REWARD_MERIT)
-
-	-- 发放仙晶
-	local data = DataManager:GetData(player)
-	if data then
-		data.XianJing = (data.XianJing or 0) + REWARD_XIANJING
-		DataManager:UpdateField(player, "XianJing", data.XianJing)
+	-- 从 StatsConfig 读取成本/奖励
+	local taskCosts = StatusService:GetTaskCosts("ExpelMonkey")
+	if taskCosts and taskCosts.ApplyCost then
+		StatusService:ApplyCosts(player, taskCosts.ApplyCost)
+		if taskCosts.ApplyCost.Merit then
+			MeritService.AddMerit(player, taskCosts.ApplyCost.Merit)
+		end
+	else
+		StatusService:ApplyCosts(player, { Stamina = -8 })
+		MeritService.AddMerit(player, REWARD_MERIT)
 	end
 
 	-- 更新驱猴次数
+	local data = DataManager:GetData(player)
 	if data then
 		data.ExpelCount = (data.ExpelCount or 0) + 1
 		DataManager:UpdateField(player, "ExpelCount", data.ExpelCount)
 	end
 
-	print("  " .. player.Name .. " 驱赶了猴妖！获得功勋+"
-		.. REWARD_MERIT .. "，仙晶+" .. REWARD_XIANJING)
+	print("  " .. player.Name .. " 驱赶了猴妖！获得仙晶+"
+		.. ((taskCosts and taskCosts.ApplyCost and taskCosts.ApplyCost.XianJing) or REWARD_XIANJING))
 
 	return true, "Expelled"
 end

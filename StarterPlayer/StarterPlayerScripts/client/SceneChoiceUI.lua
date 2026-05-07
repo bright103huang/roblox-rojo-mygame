@@ -46,6 +46,10 @@ local COLORS = {
 	TypeWork = Color3.fromRGB(50, 80, 120),
 	TypeShop = Color3.fromRGB(50, 100, 60),
 	TypeHome = Color3.fromRGB(100, 85, 50),
+	-- 场景状态颜色
+	StatusAvailable = Color3.fromRGB(60, 180, 120),
+	StatusCaution = Color3.fromRGB(220, 180, 40),
+	StatusWarning = Color3.fromRGB(200, 60, 60),
 }
 
 -- ============================================================
@@ -59,10 +63,25 @@ local transitionOverlay = nil
 local transitionLabel = nil
 
 -- ============================================================
+-- 获取场景状态颜色
+-- ============================================================
+local function getStatusColor(status)
+	if status == "available" then
+		return COLORS.StatusAvailable
+	elseif status == "caution" then
+		return COLORS.StatusCaution
+	elseif status == "warning" then
+		return COLORS.StatusWarning
+	end
+	return COLORS.Gray
+end
+
+-- ============================================================
 -- 创建场景卡片
 -- @param isCurrentScene boolean 当前是否正在该场景中（禁用点击+置灰）
+-- @param gateStatus { status, reason } 场景评估结果（可选）
 -- ============================================================
-local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
+local function createSceneCard(parent, position, size, sceneId, isCurrentScene, gateStatus)
 	local cfg = SceneConfig[sceneId]
 	if not cfg then
 		return nil
@@ -77,6 +96,10 @@ local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 	local rewardDisplay = cfg.RewardDisplay or ""
 	local isWork = sceneType == "Work"
 
+	local gateStat = gateStatus and gateStatus.status or "available"
+	local gateReason = gateStatus and gateStatus.reason or ""
+	local statusColor = getStatusColor(gateStat)
+
 	-- 卡片主框架
 	local card = Instance.new("Frame")
 	card.Name = "Card_" .. sceneId
@@ -89,41 +112,53 @@ local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 	cardCorner.CornerRadius = UDim.new(0, 10)
 	cardCorner.Parent = card
 
-	-- 场景类型色条（顶部细线装饰）
-	if sceneType == "Work" then
-		local accent = Instance.new("Frame")
-		accent.Size = UDim2.new(1, -4, 0, 3)
-		accent.Position = UDim2.new(0, 2, 0, 2)
-		accent.BackgroundColor3 = COLORS.TypeWork
-		accent.BorderSizePixel = 0
-		accent.Parent = card
-		local accentCorner = Instance.new("UICorner")
-		accentCorner.CornerRadius = UDim.new(0, 3)
-		accentCorner.Parent = accent
-	end
+	-- 状态色条（左侧竖条，根据 gateStatus 变色）
+	local statusBar = Instance.new("Frame")
+	statusBar.Size = UDim2.new(0, 4, 1, -8)
+	statusBar.Position = UDim2.new(0, 2, 0, 4)
+	statusBar.BackgroundColor3 = statusColor
+	statusBar.BorderSizePixel = 0
+	statusBar.Parent = card
+	local statusBarCorner = Instance.new("UICorner")
+	statusBarCorner.CornerRadius = UDim.new(0, 2)
+	statusBarCorner.Parent = statusBar
 
 	-- 图标 + 场景名
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "Name"
-	nameLabel.Size = UDim2.new(1, -10, 0, 24)
-	nameLabel.Position = UDim2.new(0, 5, 0, 8)
+	nameLabel.Size = UDim2.new(1, -18, 0, 24)
+	nameLabel.Position = UDim2.new(0, 10, 0, 5)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = icon .. " " .. displayName
 	nameLabel.TextColor3 = COLORS.Gold
-	nameLabel.TextSize = 16
+	nameLabel.TextSize = 15
 	nameLabel.Font = Enum.Font.SourceSansBold
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Parent = card
 
+	-- 状态提示文本
+	local statusLabel = Instance.new("TextLabel")
+	statusLabel.Name = "Status"
+	statusLabel.Size = UDim2.new(1, -18, 0, 16)
+	statusLabel.Position = UDim2.new(0, 10, 0, 28)
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.Text = gateReason
+	statusLabel.TextColor3 = statusColor
+	statusLabel.TextSize = 10
+	statusLabel.Font = Enum.Font.SourceSansItalic
+	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+	statusLabel.TextYAlignment = Enum.TextYAlignment.Top
+	statusLabel.Parent = card
+
 	-- 描述
 	local descLabel = Instance.new("TextLabel")
 	descLabel.Name = "Desc"
-	descLabel.Size = UDim2.new(1, -10, 0, isWork and 26 or 42)
-	descLabel.Position = UDim2.new(0, 5, 0, 34)
+	descLabel.Size = UDim2.new(1, -18, 0, isWork and 22 or 36)
+	descLabel.Position = UDim2.new(0, 10, 0, 44)
 	descLabel.BackgroundTransparency = 1
 	descLabel.Text = description
 	descLabel.TextColor3 = COLORS.Gray
-	descLabel.TextSize = 11
+	descLabel.TextSize = 10
 	descLabel.Font = Enum.Font.SourceSans
 	descLabel.TextWrapped = true
 	descLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -134,12 +169,12 @@ local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 	if isWork then
 		local infoLabel = Instance.new("TextLabel")
 		infoLabel.Name = "Info"
-		infoLabel.Size = UDim2.new(1, -10, 0, 36)
-		infoLabel.Position = UDim2.new(0, 5, 0, 62)
+		infoLabel.Size = UDim2.new(1, -18, 0, 30)
+		infoLabel.Position = UDim2.new(0, 10, 0, 68)
 		infoLabel.BackgroundTransparency = 1
 		infoLabel.Text = "训练:" .. trainLabel .. "  |  " .. costDisplay .. "\n" .. rewardDisplay
 		infoLabel.TextColor3 = Color3.fromRGB(180, 200, 220)
-		infoLabel.TextSize = 9
+		infoLabel.TextSize = 8
 		infoLabel.Font = Enum.Font.SourceSans
 		infoLabel.TextXAlignment = Enum.TextXAlignment.Left
 		infoLabel.TextYAlignment = Enum.TextYAlignment.Top
@@ -147,7 +182,7 @@ local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 		infoLabel.Parent = card
 	end
 
-	-- 点击 / 当前场景状态
+	-- 当前场景状态（置灰，不可点击）
 	if isCurrentScene then
 		card.BackgroundColor3 = COLORS.CardDisabled
 		nameLabel.TextColor3 = COLORS.Gray
@@ -217,11 +252,24 @@ function SceneChoiceUI:Open(triggerData)
 	overlay.ZIndex = 0
 	overlay.Parent = screenGui
 
+	-- 请求场景门控状态
+	local gatesData = nil
+	local requestSceneGates = eventsFolder:FindFirstChild("RequestSceneGates")
+	if requestSceneGates and requestSceneGates:IsA("RemoteFunction") then
+		local success, result = pcall(function()
+			return requestSceneGates:InvokeServer()
+		end)
+		if success and result then
+			gatesData = result
+		end
+	end
+
 	-- 主面板
+	local panelHeight = 520
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
-	panel.Size = UDim2.new(0, 460, 0, 440)
-	panel.Position = UDim2.new(0.5, -230, 0.5, -220)
+	panel.Size = UDim2.new(0, 460, 0, panelHeight)
+	panel.Position = UDim2.new(0.5, -230, 0.5, -panelHeight/2)
 	panel.BackgroundColor3 = COLORS.Panel
 	panel.BorderSizePixel = 0
 	panel.Parent = screenGui
@@ -241,10 +289,29 @@ function SceneChoiceUI:Open(triggerData)
 	title.Font = Enum.Font.SourceSansBold
 	title.Parent = panel
 
+	-- 时辰建议行
+	local timeLabel = Instance.new("TextLabel")
+	timeLabel.Name = "TimeAdvice"
+	timeLabel.Size = UDim2.new(0.9, 0, 0, 22)
+	timeLabel.Position = UDim2.new(0.05, 0, 0, 46)
+	timeLabel.BackgroundTransparency = 1
+	local gameHour = triggerData and triggerData.GameHour or player:GetAttribute("GameHour") or 6
+	local isNight = triggerData and triggerData.IsNight or player:GetAttribute("IsNight") or false
+	local tLabel = triggerData and triggerData.TimeLabel or player:GetAttribute("TimeLabel") or ""
+	if tLabel == "" then
+		tLabel = isNight and "夜晚" or "白天"
+	end
+	timeLabel.Text = "🕐 " .. tLabel .. "  |  " .. (isNight and "🌙 夜间·适合休息冥想" or "☀ 日间·效率正常")
+	timeLabel.TextColor3 = COLORS.White
+	timeLabel.TextSize = 13
+	timeLabel.Font = Enum.Font.SourceSans
+	timeLabel.TextXAlignment = Enum.TextXAlignment.Left
+	timeLabel.Parent = panel
+
 	-- 分割线
 	local divider = Instance.new("Frame")
 	divider.Size = UDim2.new(0.9, 0, 0, 1)
-	divider.Position = UDim2.new(0.05, 0, 0, 50)
+	divider.Position = UDim2.new(0.05, 0, 0, 72)
 	divider.BackgroundColor3 = COLORS.Gray
 	divider.BackgroundTransparency = 0.7
 	divider.BorderSizePixel = 0
@@ -277,13 +344,17 @@ function SceneChoiceUI:Open(triggerData)
 
 	local cardWidth = 130
 	local cardHeight = 110
-	local startY = 65
+	local startY = 85
 	local gapX = 20
 	local gapY = 15
 	local row1 = { "YiShanFang", "Alchemy", "Beast" }
 	local row2 = { "DanShop", "Home" }
 
 	local currentScene = triggerData and triggerData.CurrentScene or "YiShanFang"
+
+	-- 获取门控数据
+	local currentSceneGates = gatesData and gatesData.Gates or {}
+	local chainEventsStr = gatesData and gatesData.ChainEvents or triggerData and triggerData.ChainEvents or ""
 
 	-- 第一行 (3个居中)
 	local row1Width = 3 * cardWidth + 2 * gapX
@@ -295,7 +366,8 @@ function SceneChoiceUI:Open(triggerData)
 			UDim2.new(0, x, 0, startY),
 			UDim2.new(0, cardWidth, 0, cardHeight),
 			sceneId,
-			sceneId == currentScene
+			sceneId == currentScene,
+			currentSceneGates[sceneId]
 		)
 	end
 
@@ -309,15 +381,16 @@ function SceneChoiceUI:Open(triggerData)
 			UDim2.new(0, x, 0, startY + cardHeight + gapY),
 			UDim2.new(0, cardWidth, 0, cardHeight),
 			sceneId,
-			sceneId == currentScene
+			sceneId == currentScene,
+			currentSceneGates[sceneId]
 		)
 	end
 
 	-- 玩家状态栏
-	local statusY = startY + cardHeight * 2 + gapY * 2 + 10
+	local statusY = startY + cardHeight * 2 + gapY * 2 + 12
 	local statusBg = Instance.new("Frame")
 	statusBg.Name = "StatusBar"
-	statusBg.Size = UDim2.new(0.9, 0, 0, 75)
+	statusBg.Size = UDim2.new(0.9, 0, 0, 105)
 	statusBg.Position = UDim2.new(0.05, 0, 0, statusY)
 	statusBg.BackgroundColor3 = COLORS.Bg
 	statusBg.BorderSizePixel = 0
@@ -362,8 +435,24 @@ function SceneChoiceUI:Open(triggerData)
 			triggerLabel.Parent = statusBg
 		end
 
+		-- 链式反应状态
+		local chainEvents = triggerData.ChainEvents or chainEventsStr or ""
+		if chainEvents ~= ""  then
+			local chainLabel = Instance.new("TextLabel")
+			chainLabel.Name = "ChainEvents"
+			chainLabel.Size = UDim2.new(1, -10, 0, 18)
+			chainLabel.Position = UDim2.new(0, 5, 0, triggerData.TriggerDetail and 44 or 28)
+			chainLabel.BackgroundTransparency = 1
+			chainLabel.Text = "⚠ " .. chainEvents
+			chainLabel.TextColor3 = COLORS.StatusWarning
+			chainLabel.TextSize = 12
+			chainLabel.Font = Enum.Font.SourceSansBold
+			chainLabel.TextXAlignment = Enum.TextXAlignment.Left
+			chainLabel.Parent = statusBg
+		end
+
 		-- 等级显示（从 Attribute 读取）
-		local levelY = triggerData.TriggerDetail and 46 or 28
+		local levelY = (chainEvents ~= "" or chainEventsStr ~= "") and (triggerData.TriggerDetail and 64 or 48) or (triggerData.TriggerDetail and 46 or 28)
 		local agilityLv = player:GetAttribute("Agility") or 1
 		local alchemyLv = player:GetAttribute("AlchemyLv") or 1
 		local combatLv = player:GetAttribute("Combat") or 1
@@ -448,6 +537,10 @@ local function createManualButton()
 			Malice = player:GetAttribute("Malice") or 0,
 			TriggerType = "Manual",
 			TriggerDetail = "手动切换场景",
+			GameHour = player:GetAttribute("GameHour") or 6,
+			IsNight = player:GetAttribute("IsNight") or false,
+			TimeLabel = player:GetAttribute("TimeLabel") or "",
+			ChainEvents = player:GetAttribute("ChainEvents") or "",
 		}
 		SceneChoiceUI:Open(triggerData)
 	end)

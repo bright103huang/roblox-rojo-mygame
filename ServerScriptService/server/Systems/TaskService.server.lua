@@ -31,6 +31,27 @@ if not TaskEvent then
 	print("✅ TaskEvent 已创建")
 end
 
+-- SceneGate RemoteFunction（客户端查询场景状态）
+local gateFunction = eventsFolder:FindFirstChild("RequestSceneGates")
+if not gateFunction then
+	gateFunction = Instance.new("RemoteFunction")
+	gateFunction.Name = "RequestSceneGates"
+	gateFunction.Parent = eventsFolder
+end
+local SceneGateService = require(script.Parent.SceneGateService)
+gateFunction.OnServerInvoke = function(player)
+	local data = DataManager:GetData(player)
+	local gates = SceneGateService:EvaluateAllScenes(player)
+	return {
+		Gates = gates,
+		CurrentScene = data and data.CurrentScene or "YiShanFang",
+		GameHour = player:GetAttribute("GameHour") or 6,
+		IsNight = player:GetAttribute("IsNight") or false,
+		TimeLabel = player:GetAttribute("TimeLabel") or "",
+		ChainEvents = player:GetAttribute("ChainEvents") or "",
+	}
+end
+
 -- ============================================================
 -- 任务处理器注册
 -- ============================================================
@@ -109,6 +130,10 @@ StatusService.OnLevelUp = function(player, attrField, newLevel)
 		Malice = data.Malice,
 		TriggerType = "LevelUp",
 		TriggerDetail = (nameMap[attrField] or attrField) .. " 提升至 Lv." .. newLevel,
+		GameHour = player:GetAttribute("GameHour") or 6,
+		IsNight = player:GetAttribute("IsNight") or false,
+		TimeLabel = player:GetAttribute("TimeLabel") or "",
+		ChainEvents = player:GetAttribute("ChainEvents") or "",
 	}
 
 	TaskEvent:FireClient(player, "ShowSceneChoice", sceneInfo)
@@ -147,6 +172,10 @@ local function sendSceneChoice(player, reason)
 		Malice = data.Malice,
 		TriggerType = "ResourceExhausted",
 		TriggerDetail = reason or "资源不足",
+		GameHour = player:GetAttribute("GameHour") or 6,
+		IsNight = player:GetAttribute("IsNight") or false,
+		TimeLabel = player:GetAttribute("TimeLabel") or "",
+		ChainEvents = player:GetAttribute("ChainEvents") or "",
 	}
 
 	TaskEvent:FireClient(player, "ShowSceneChoice", sceneInfo)
@@ -192,24 +221,15 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 	-- 路由到处理器
 	-- ============================================================
 	if actionType == "Pick" then
-		-- 前置资源检查（TASK_COSTS 中值为负数，取绝对值检查）
+		-- 前置资源检查：从 TASK_COSTS 读取 ActionCost（正数阈值）
 		local taskCosts = Config.Stats.TASK_COSTS[taskName]
-		if taskCosts then
-			local costs = {}
-			if taskCosts.Stamina then
-				costs.Stamina = math.abs(taskCosts.Stamina)
-			end
-			if taskCosts.Spirit then
-				costs.Spirit = math.abs(taskCosts.Spirit)
-			end
-			if next(costs) then
-				local canPerform, reason = StatusService:CanPerformTask(player, costs)
-				if not canPerform then
-					print("❌ " .. player.Name .. " " .. taskName .. " 资源不足：" .. tostring(reason))
-					sendSceneChoice(player, reason)
-					TaskEvent:FireClient(player, "PickFailed:" .. taskName)
-					return
-				end
+		if taskCosts and taskCosts.ActionCost then
+			local canPerform, reason = StatusService:CanPerformTask(player, taskCosts.ActionCost)
+			if not canPerform then
+				print("❌ " .. player.Name .. " " .. taskName .. " 资源不足：" .. tostring(reason))
+				sendSceneChoice(player, reason)
+				TaskEvent:FireClient(player, "PickFailed:" .. taskName)
+				return
 			end
 		end
 

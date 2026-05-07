@@ -62,6 +62,7 @@ local DEFAULT_DATA = {
 	MilitaryRank = "天兵",  -- 军衔
 	PatrolCount = 0,       -- 今日巡逻次数
 	ExpelCount = 0,        -- 今日驱猴次数
+	HasSeenAlchemyTutorial = false,  -- 是否看过炼丹新手引导
 	LastPrayerDate = "",   -- 上次祈福日期（防止重复）
 }
 

@@ -16,12 +16,23 @@ local RiskConfig = Config.Risk
 -- 本地引用
 -- ============================================================
 local SpeedCalculator = nil  -- 延迟加载，避免循环依赖
+local TimeService = nil      -- 延迟加载，避免循环依赖
 
 local function getSpeedCalculator()
 	if not SpeedCalculator then
 		SpeedCalculator = require(script.Parent.SpeedCalculator)
 	end
 	return SpeedCalculator
+end
+
+local function getTimeModifier()
+	if not TimeService then
+		TimeService = require(script.Parent.TimeService)
+	end
+	if TimeService and TimeService.GetTimeModifier then
+		return TimeService.GetTimeModifier()
+	end
+	return { RestEff = 1.0, TaskEff = 1.0, ShopOpen = false }
 end
 
 -- ============================================================
@@ -77,7 +88,25 @@ function StatusService:ApplyCosts(player, costsTable)
 	local data = DataManager:GetData(player)
 	if not data then return end
 
-	for field, delta in pairs(costsTable) do
+	-- 油尽灯枯: 双倍负面消耗（Stamina/Spirit 消耗翻倍，疲劳/火毒/戾气增加翻倍）
+	local hasBurnout = (data.Stamina or 0) < StatsConfig.CHAIN_REACTION.CHAIN_BURNOUT_STAMINA
+		and (data.Spirit or 0) < StatsConfig.CHAIN_REACTION.CHAIN_BURNOUT_SPIRIT
+
+	local adjustedCosts = costsTable
+	if hasBurnout then
+		adjustedCosts = {}
+		for field, delta in pairs(costsTable) do
+			if (field == "Stamina" or field == "Spirit") and delta < 0 then
+				adjustedCosts[field] = delta * 2
+			elseif (field == "Fatigue" or field == "FirePoison" or field == "Malice") and delta > 0 then
+				adjustedCosts[field] = delta * 2
+			else
+				adjustedCosts[field] = delta
+			end
+		end
+	end
+
+	for field, delta in pairs(adjustedCosts) do
 		if field == "Stamina" then
 			data.Stamina = clamp((data.Stamina or StatsConfig.MAX_STAMINA) + delta, 0, StatsConfig.MAX_STAMINA)
 			DataManager:UpdateField(player, "Stamina", data.Stamina)
@@ -156,11 +185,126 @@ function StatusService:ApplyCosts(player, costsTable)
 		DataManager:UpdateField(player, "GongDe", data.GongDe)
 	end
 
+	-- 毒戾入体: FirePoison>80 + Malice>60 -> 10% 毒发: Stamina-15, Spirit-10
+	if (data.FirePoison or 0) > StatsConfig.CHAIN_REACTION.CHAIN_TOXIN_FIREPOISON
+		and (data.Malice or 0) > StatsConfig.CHAIN_REACTION.CHAIN_TOXIN_MALICE
+		and math.random() < 0.1 then
+		data.Stamina = math.max(0, (data.Stamina or 0) - 15)
+		data.Spirit = math.max(0, (data.Spirit or 0) - 10)
+		DataManager:UpdateField(player, "Stamina", data.Stamina)
+		DataManager:UpdateField(player, "Spirit", data.Spirit)
+		local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+		if eventsFolder then
+			local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
+			if taskEvent then
+				taskEvent:FireClient(player, "PoisonBurst", {
+					Message = "毒戾入体！体力-15，精神-10"
+				})
+			end
+		end
+	end
+
+	-- 油尽灯枯: 强制传送回家
+	if hasBurnout then
+		local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+		if eventsFolder then
+			local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
+			if taskEvent then
+				taskEvent:FireClient(player, "ForceTeleportHome", {
+					Message = "油尽灯枯！体力与精神耗尽，强制传送回家休养"
+				})
+			end
+		end
+	end
+
 	-- 红线检测
 	self:CheckRedLines(player)
 
 	-- 速度更新（如果有身法或状态变化）
 	getSpeedCalculator().Apply(player)
+end
+
+-- 获取任务成本配置（含时辰效率修正）
+-- taskName: "Deliver" / "Alchemy" / "Beast" / "Patrol" / "ExpelMonkey"
+-- 返回 taskCosts 副本（已应用 taskEff 修正）或 nil
+function StatusService:GetTaskCosts(taskName)
+	local taskCosts = StatsConfig.TASK_COSTS[taskName]
+	if not taskCosts then
+		return nil
+	end
+
+	-- 返回一个副本，不修改原始配置
+	local result = {}
+	for k, v in pairs(taskCosts) do
+		if type(v) == "table" then
+			result[k] = {}
+			for k2, v2 in pairs(v) do
+				result[k][k2] = v2
+			end
+		else
+			result[k] = v
+		end
+	end
+
+	-- 应用时辰效率修正
+	local timeMod = getTimeModifier()
+	local taskEff = timeMod.TaskEff or 1.0
+
+	if result.ActionCost then
+		result.ActionCost = {}
+		for field, val in pairs(taskCosts.ActionCost) do
+			result.ActionCost[field] = math.max(1, math.floor(val * taskEff))
+		end
+	end
+
+	if result.ApplyCost then
+		result.ApplyCost = {}
+		for field, val in pairs(taskCosts.ApplyCost) do
+			if field == "Stamina" or field == "Spirit" then
+				-- 负值（消耗）乘以 taskEff；正值（奖励）保持不变
+				if val < 0 then
+					result.ApplyCost[field] = math.floor(val * taskEff)
+				else
+					result.ApplyCost[field] = val
+				end
+			elseif field == "Fatigue" or field == "FirePoison" or field == "Malice" then
+				-- 正值（负面效果增加）乘以 taskEff
+				if val > 0 then
+					result.ApplyCost[field] = math.ceil(val * taskEff)
+				else
+					result.ApplyCost[field] = val
+				end
+			else
+				result.ApplyCost[field] = val
+			end
+		end
+	end
+
+	if result.CraftCost then
+		result.CraftCost = {}
+		for field, val in pairs(taskCosts.CraftCost) do
+			if val < 0 then
+				result.CraftCost[field] = math.floor(val * taskEff)
+			else
+				result.CraftCost[field] = val
+			end
+		end
+	end
+
+	if result.FailureCost then
+		result.FailureCost = {}
+		for field, val in pairs(taskCosts.FailureCost) do
+			if field == "Fatigue" and val > 0 then
+				result.FailureCost[field] = math.ceil(val * taskEff)
+			elseif val < 0 then
+				result.FailureCost[field] = math.floor(val * taskEff)
+			else
+				result.FailureCost[field] = val
+			end
+		end
+	end
+
+	return result
 end
 
 -- 增加经验（自动检测升级）
@@ -321,8 +465,21 @@ task.spawn(function()
 			local data = DataManager:GetData(player)
 			if not data then continue end
 
-			-- Stamina 恢复（疲劳 > 80 时减半）
-			local staminaRegen = StatsConfig.STAMINA_REGEN_PER_TICK
+			-- 获取时辰恢复修正
+			local timeMod = getTimeModifier()
+			local restEff = timeMod.RestEff or 1.0
+
+			-- 虚不受补: Fatigue>80 + FirePoison>60 时完全停止恢复
+			local hasXuBuShou = (data.Fatigue or 0) > StatsConfig.CHAIN_REACTION.CHAIN_EXHAUSTION_FATIGUE
+				and (data.FirePoison or 0) > StatsConfig.CHAIN_REACTION.CHAIN_EXHAUSTION_POISON
+			if hasXuBuShou then
+				-- 跳过所有恢复，只做红线检测
+				StatusService:CheckRedLines(player)
+				continue
+			end
+
+			-- Stamina 恢复（疲劳 > 80 时减半 × 时辰恢复修正）
+			local staminaRegen = StatsConfig.STAMINA_REGEN_PER_TICK * restEff
 			if (data.Fatigue or 0) > StatsConfig.FATIGUE_REDLINE then
 				staminaRegen = staminaRegen * StatsConfig.FATIGUE_REGEN_REDUCTION
 			end
@@ -332,8 +489,8 @@ task.spawn(function()
 				DataManager:UpdateField(player, "Stamina", newStamina)
 			end
 
-			-- Spirit 恢复
-			local spiritRegen = StatsConfig.SPIRIT_REGEN_PER_TICK
+			-- Spirit 恢复（× 时辰恢复修正）
+			local spiritRegen = StatsConfig.SPIRIT_REGEN_PER_TICK * restEff
 			if spiritRegen > 0 and data.Spirit < StatsConfig.MAX_SPIRIT then
 				local newSpirit = math.min(StatsConfig.MAX_SPIRIT, (data.Spirit or 0) + spiritRegen)
 				data.Spirit = newSpirit

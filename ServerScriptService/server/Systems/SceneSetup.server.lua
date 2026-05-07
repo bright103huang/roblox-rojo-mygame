@@ -11,6 +11,17 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(script.Parent.DataManager)
+local TimeService = nil  -- 延迟加载，避免循环依赖
+
+local function getTimeModifier()
+	if not TimeService then
+		TimeService = require(script.Parent.TimeService)
+	end
+	if TimeService and TimeService.GetTimeModifier then
+		return TimeService.GetTimeModifier()
+	end
+	return { RestEff = 1.0 }
+end
 
 local SCENES = {
 	YiShanFang = Vector3.new(0, 3, 0),
@@ -127,6 +138,42 @@ local function createArea(cfg)
 end
 
 -- ============================================================
+-- 工具：创建场景提示板
+-- ============================================================
+local function createHintBoard(position, text, color)
+	local part = Instance.new("Part")
+	part.Name = "AlchemyHint"
+	part.Size = Vector3.new(6, 0.5, 0.5)
+	part.Position = position
+	part.Anchored = true
+	part.CanCollide = false
+	part.Transparency = 0.8
+	part.BrickColor = color or BrickColor.new("Bright blue")
+	part.Parent = workspace
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "HintText"
+	bb.Parent = part
+	bb.Adornee = part
+	bb.Size = UDim2.new(0, 300, 0, 60)
+	bb.StudsOffset = Vector3.new(0, 3, 0)
+	bb.AlwaysOnTop = true
+	bb.MaxDistance = 500
+
+	local label = Instance.new("TextLabel")
+	label.Parent = bb
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = Color3.new(1, 1, 0.8)
+	label.TextStrokeTransparency = 0
+	label.TextStrokeColor3 = Color3.new(0, 0, 0)
+	label.TextSize = 18
+	label.Font = Enum.Font.SourceSansBold
+	label.TextWrapped = true
+end
+
+-- ============================================================
 -- 御膳房（传菜打工）— 2D 横版布局
 -- ============================================================
 local function setupYiShanFangScene()
@@ -239,6 +286,64 @@ local function setupAlchemyScene()
 	createDecor(origin + Vector3.new(16, 1.5, -3), Vector3.new(0.5, 1.5, 0.5), BrickColor.new("Dark brown"))
 	createDecor(origin + Vector3.new(16, 1.5, 3), Vector3.new(0.5, 1.5, 0.5), BrickColor.new("Dark brown"))
 	createDecor(origin + Vector3.new(16, 2.5, 0), Vector3.new(5, 0.2, 3), BrickColor.new("Dark brown"))
+
+	-- ============================================================
+	-- 场景引导提示
+	-- ============================================================
+
+	-- Step 1: 药材台提示
+	createHintBoard(
+		origin + Vector3.new(15, 4, 0),
+		"Step 1: 触摸药材台\n捡起 2 种药材",
+		BrickColor.new("Bright green")
+	)
+
+	-- Step 2: 炼丹炉提示
+	createHintBoard(
+		origin + Vector3.new(0, 6, 0),
+		"Step 2: 触摸丹炉\n打开炼丹面板",
+		BrickColor.new("Bright orange")
+	)
+
+	-- 丹方提示（放在药材台和丹炉之间）
+	createHintBoard(
+		origin + Vector3.new(8, 3, 0),
+		"丹方:\n草药+清水 = 回气丹\n草药+火晶 = 清毒散\n灵芝+仙露 = 聚神丹",
+		BrickColor.new("Bright yellow")
+	)
+
+	-- ============================================================
+	-- 药材名称标签
+	-- ============================================================
+	local ingredientNames = { "草药", "清水", "灵芝", "仙露", "火晶" }
+	for i, name in ipairs(ingredientNames) do
+		local labelPart = Instance.new("Part")
+		labelPart.Name = "IngredientLabel_" .. name
+		labelPart.Size = Vector3.new(0.5, 0.1, 0.5)
+		labelPart.Position = origin + Vector3.new(13 + (i - 1) * 2.5, 1.8, 0)
+		labelPart.Anchored = true
+		labelPart.CanCollide = false
+		labelPart.Transparency = 1
+		labelPart.Parent = workspace
+
+		local bb = Instance.new("BillboardGui")
+		bb.Parent = labelPart
+		bb.Adornee = labelPart
+		bb.Size = UDim2.new(0, 80, 0, 30)
+		bb.AlwaysOnTop = true
+		bb.MaxDistance = 200
+
+		local label = Instance.new("TextLabel")
+		label.Parent = bb
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = name
+		label.TextColor3 = Color3.new(0.8, 1, 0.8)
+		label.TextStrokeTransparency = 0
+		label.TextStrokeColor3 = Color3.new(0, 0, 0)
+		label.TextSize = 16
+		label.Font = Enum.Font.SourceSansBold
+	end
 
 	print("⚗️ 炼丹洞天已就绪（炼丹炉: x=0, 药材台: x=15）")
 end
@@ -395,12 +500,19 @@ local function setupHomeScene()
 				local dist = (root.Position - cultivationPart.Position).Magnitude
 				if dist > 10 then break end
 
-				-- 应用恢复
+				-- 获取时辰恢复修正（深夜恢复更快）
+				local timeMod = getTimeModifier()
+				local restEff = timeMod.RestEff or 1.0
+
+				-- 应用恢复（基础值 × 时辰恢复修正）
 				local data = DataManager and DataManager:GetData(player)
 				if data then
-					data.Stamina = math.min(100, (data.Stamina or 0) + 3)
-					data.Spirit = math.min(100, (data.Spirit or 0) + 3)
-					data.Fatigue = math.max(0, (data.Fatigue or 0) - 1)
+					local staminaGain = math.floor(3 * restEff)
+					local spiritGain = math.floor(3 * restEff)
+					local fatigueLoss = math.max(1, math.floor(1 * restEff))
+					data.Stamina = math.min(100, (data.Stamina or 0) + staminaGain)
+					data.Spirit = math.min(100, (data.Spirit or 0) + spiritGain)
+					data.Fatigue = math.max(0, (data.Fatigue or 0) - fatigueLoss)
 					DataManager:UpdateField(player, "Stamina", data.Stamina)
 					DataManager:UpdateField(player, "Spirit", data.Spirit)
 					DataManager:UpdateField(player, "Fatigue", data.Fatigue)

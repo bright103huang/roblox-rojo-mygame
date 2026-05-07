@@ -129,11 +129,15 @@ function PatrolTask.OnPlayerPickup(player, _area)
 		return false
 	end
 
-	-- 体力检查
-	local canPerform, reason = StatusService:CanPerformTask(player, { Stamina = 10 })
-	if not canPerform then
-		print("  " .. player.Name .. " 巡逻失败：" .. tostring(reason))
-		return false
+	-- 体力检查（从 StatsConfig 读取）
+	local taskCosts = StatusService:GetTaskCosts("Patrol")
+	local actionCost = taskCosts and taskCosts.ActionCost
+	if actionCost then
+		local canPerform, reason = StatusService:CanPerformTask(player, actionCost)
+		if not canPerform then
+			print("  " .. player.Name .. " 巡逻失败：" .. tostring(reason))
+			return false
+		end
 	end
 
 	-- 初始化巡逻进度
@@ -208,29 +212,27 @@ function PatrolTask.OnPlayerDrop(player, area)
 		-- 全部完成，发放奖励
 		playerProgress[userId] = nil
 
-		-- 扣除体力
-		StatusService:ApplyCosts(player, {
-			Stamina = -10,
-		})
-
-		-- 发放功勋
-		MeritService.AddMerit(player, REWARD_MERIT)
-
-		-- 发放仙晶
-		local data = DataManager:GetData(player)
-		if data then
-			data.XianJing = (data.XianJing or 0) + REWARD_XIANJING
-			DataManager:UpdateField(player, "XianJing", data.XianJing)
+		-- 从 StatsConfig 读取成本/奖励
+		local taskCosts = StatusService:GetTaskCosts("Patrol")
+		if taskCosts and taskCosts.ApplyCost then
+			StatusService:ApplyCosts(player, taskCosts.ApplyCost)
+			if taskCosts.ApplyCost.Merit then
+				MeritService.AddMerit(player, taskCosts.ApplyCost.Merit)
+			end
+		else
+			StatusService:ApplyCosts(player, { Stamina = -10 })
+			MeritService.AddMerit(player, REWARD_MERIT)
 		end
 
 		-- 更新巡逻次数
+		local data = DataManager:GetData(player)
 		if data then
 			data.PatrolCount = (data.PatrolCount or 0) + 1
 			DataManager:UpdateField(player, "PatrolCount", data.PatrolCount)
 		end
 
-		print("  " .. player.Name .. " 完成巡逻！获得功勋+"
-			.. REWARD_MERIT .. "，仙晶+" .. REWARD_XIANJING)
+		print("  " .. player.Name .. " 完成巡逻！获得仙晶+"
+			.. ((taskCosts and taskCosts.ApplyCost and taskCosts.ApplyCost.XianJing) or REWARD_XIANJING))
 
 		return true, "PatrolComplete"
 	else

@@ -7,6 +7,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local StatusService = require(script.Parent.StatusService)
+local DataManager = require(script.Parent.DataManager)
+local Config = require(ReplicatedStorage.Shared.Config)
 
 -- ============================================================
 -- 妖兽属性配置
@@ -253,8 +255,35 @@ function BeastNPC.PlayerAttackBeast(beastId, player)
 	local data = require(script.Parent.DataManager).GetData(player)
 	if not data then return false, "NoData" end
 
+	-- 检查 狂躁 和 入魔倾向 伤害修正
+	local hasKuangZao = (data.Fatigue or 0) > Config.Stats.CHAIN_REACTION.CHAIN_RAGE_FATIGUE
+		and (data.Malice or 0) > Config.Stats.CHAIN_REACTION.CHAIN_RAGE_MALICE
+	local hasRuMo = (data.Malice or 0) > Config.Stats.CHAIN_REACTION.CHAIN_DEMON_MALICE
+		and (data.Risk or 10) > Config.Stats.CHAIN_REACTION.CHAIN_DEMON_RISK
+
 	-- 伤害公式：基础 8 + Combat×2
 	local damage = 8 + (data.Combat or 1) * 2
+	if hasRuMo then
+		damage = math.floor(damage * 1.2)  -- +20% 入魔倾向
+	end
+	if hasKuangZao then
+		damage = math.floor(damage * 1.3)  -- +30% 狂躁（与入魔倾向叠加）
+	end
+
+	-- 狂躁: 15% 误伤自己
+	if hasKuangZao and math.random() < 0.15 then
+		local selfDamage = math.floor(damage * 0.3)
+		local newStamina = math.max(0, (data.Stamina or 0) - selfDamage)
+		data.Stamina = newStamina
+		DataManager:UpdateField(player, "Stamina", newStamina)
+		local taskEvent = getTaskEvent()
+		if taskEvent then
+			taskEvent:FireClient(player, "SelfHarm", {
+				Damage = selfDamage,
+				Message = "狂躁失控！误伤自己，体力 -" .. selfDamage
+			})
+		end
+	end
 	beast.HP = beast.HP - damage
 	beast.LastPlayerAttackTime = tick()
 

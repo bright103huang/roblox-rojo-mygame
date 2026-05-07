@@ -56,21 +56,29 @@ local StatsConfig = {
 	-- ============================================================
 	TASK_COSTS = {
 		Deliver = {
-			Stamina = -8, Spirit = -1, Fatigue = 5,
-			AgilityExp = 5,
-			Reward = { ["仙晶"] = 10 },
+			ActionCost = { Stamina = 8 },
+			ApplyCost = { Stamina = -8, Spirit = -1, Fatigue = 5, AgilityExp = 5, XianJing = 10 },
+			Display = "体力-8  疲劳+5  身法exp+5  仙晶+10",
 		},
 		Alchemy = {
-			Spirit = -10, FirePoison = 3, Fatigue = 3,
-			AlchemyExp = 8,
-			SuccessReward = { ["仙晶"] = 15 },
-			FailureCost = { Fatigue = 8, FirePoison = 5 }, -- 炸炉额外
-			FailurePenalty = { XianJing = -5 },
+			ActionCost = { Spirit = 10 },
+			ApplyCost = { Spirit = -10, FirePoison = 3, Fatigue = 3, AlchemyExp = 8, XianJing = 15 },
+			CraftCost = { Spirit = -20 },
+			FailureCost = { Spirit = -20, Fatigue = 20 },
+			Display = "精神-10  火毒+3  火候exp+8  仙晶+15",
 		},
 		Beast = {
-			Stamina = -12, Malice = 5,
-			CombatExp = 10,
-			Reward = { ["仙晶"] = 25 },
+			ActionCost = { Stamina = 12 },
+			ApplyCost = { Stamina = -12, Malice = 5, CombatExp = 10, XianJing = 25 },
+			Display = "体力-12  戾气+5  仙力exp+10  仙晶+25",
+		},
+		Patrol = {
+			ActionCost = { Stamina = 10 },
+			ApplyCost = { Stamina = -10, Merit = 1, XianJing = 5 },
+		},
+		ExpelMonkey = {
+			ActionCost = { Stamina = 8 },
+			ApplyCost = { Stamina = -8, Merit = 1, XianJing = 3 },
 		},
 	},
 
@@ -117,6 +125,17 @@ local StatsConfig = {
 		CHAIN_TOXIN_MALICE = 60,
 		CHAIN_RAGE_FATIGUE = 80,
 		CHAIN_RAGE_MALICE = 80,
+	},
+
+	-- ============================================================
+	-- 时辰效率修正（Time Modifiers）
+	-- ============================================================
+	TIME_MODIFIERS = {
+		-- hourStart (inclusive), hourEnd (exclusive), taskEff, shopOpen, restEff, label
+		{ 4, 12, 0.87, false, 0.8, "上午·工作效率高峰" },        -- 卯时-午时: 消耗减13%
+		{ 12, 18, 1.0, true, 1.0, "下午·效率正常，商店营业" },    -- 未时-酉时: 正常
+		{ 18, 22, 1.15, true, 1.2, "傍晚·效率下降，商店将打烊" }, -- 戌时-亥时: 消耗增15%
+		{ 22, 28, 1.3, false, 1.5, "深夜·适合休息冥想" },         -- 子时-寅时(28=次日4时): 消耗增30%，恢复+50%
 	},
 
 	-- ============================================================

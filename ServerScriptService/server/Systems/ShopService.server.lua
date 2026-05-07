@@ -60,11 +60,16 @@ end
 
 -- 购买丹药
 -- 返回: resultCode, message
--- resultCode: "Success", "InsufficientFunds", "DailyLimitReached", "UnknownItem"
+-- resultCode: "Success", "InsufficientFunds", "DailyLimitReached", "ShopClosed", "UnknownItem"
 function ShopService:Purchase(player, itemKey)
 	local data = DataManager:GetData(player)
 	if not data then
 		return "UnknownItem", "数据未加载"
+	end
+
+	-- 检查营业时间
+	if player:GetAttribute("ShopOpen") == 0 then
+		return "ShopClosed", "仙丹阁已打烊，营业时间：未时-戌时 (12:00-22:00)"
 	end
 
 	local item = DanConfig.Items[itemKey]
@@ -135,6 +140,14 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 	if action == "Pick:Shop" then
 		local data = DataManager:GetData(player)
 		if not data then return end
+
+		-- 检查营业时间
+		if player:GetAttribute("ShopOpen") == 0 then
+			ShopEvent:FireClient(player, "ShopClosed", {
+				Message = "仙丹阁已打烊，营业时间：未时-戌时 (12:00-22:00)",
+			})
+			return
+		end
 
 		-- 检查限购刷新
 		ShopService:CheckReset(player, data)

@@ -103,11 +103,15 @@ function AlchemyTask.OnPlayerPickup(player, _area)
 		return false  -- 已经拿着药材了
 	end
 
-	-- 检查精神是否足够
-	local canPerform, reason = StatusService:CanPerformTask(player, { Spirit = 20 })
-	if not canPerform then
-		print("❌ " .. player.Name .. " 炼丹失败：" .. tostring(reason))
-		return false
+	-- 检查精神是否足够（从 StatsConfig 读取）
+	local taskCosts = StatusService:GetTaskCosts("Alchemy")
+	local actionCost = taskCosts and taskCosts.ActionCost
+	if actionCost then
+		local canPerform, reason = StatusService:CanPerformTask(player, actionCost)
+		if not canPerform then
+			print("❌ " .. player.Name .. " 炼丹失败：" .. tostring(reason))
+			return false
+		end
 	end
 
 	carrying[player.UserId] = true
@@ -180,19 +184,46 @@ function AlchemyTask.OnCraft(player, contextData)
 
 	local successChance = math.clamp(baseChance + levelBonus - firePoisonPenalty, 0.1, 0.95)
 
+	-- 从 StatsConfig 读取成本配置（提前读取，供虚不受补和后续使用）
+	local taskCosts = StatusService:GetTaskCosts("Alchemy")
+
+	-- 虚不受补: Fatigue>80 + FirePoison>60 -> 50% 服药失败（炸炉效果）
+	local hasXuBuShou = (data.Fatigue or 0) > Config.Stats.CHAIN_REACTION.CHAIN_EXHAUSTION_FATIGUE
+		and (data.FirePoison or 0) > Config.Stats.CHAIN_REACTION.CHAIN_EXHAUSTION_POISON
+	if hasXuBuShou and math.random() < 0.5 then
+		if taskCosts and taskCosts.FailureCost then
+			StatusService:ApplyCosts(player, taskCosts.FailureCost)
+		else
+			StatusService:ApplyCosts(player, { Spirit = -20, Fatigue = 20 })
+		end
+		carrying[player.UserId] = false
+		return true, {
+			Success = false,
+			Reason = "虚不受补",
+			FatigueIncrease = (taskCosts and taskCosts.FailureCost and taskCosts.FailureCost.Fatigue) or 20,
+		}
+	end
+
 	-- 掷骰决定结果
 	local success = math.random() <= successChance
 
-	-- 共同的消耗：Spirit -20, FirePoison +5, AlchemyExp +8
-	local costs = {
-		Spirit = -20,
-		FirePoison = 5,
-		AlchemyExp = 8,
-	}
-
 	if success then
-		-- 成功：获得仙晶 + 丹药效果
-		costs.XianJing = 15
+		-- 成功：合并 ApplyCost（基础消耗+奖励）和 CraftCost（额外精神消耗）
+		local costs = {}
+		if taskCosts then
+			if taskCosts.ApplyCost then
+				for k, v in pairs(taskCosts.ApplyCost) do
+					costs[k] = v
+				end
+			end
+			if taskCosts.CraftCost then
+				for k, v in pairs(taskCosts.CraftCost) do
+					costs[k] = (costs[k] or 0) + v
+				end
+			end
+		else
+			costs = { Spirit = -20, FirePoison = 5, AlchemyExp = 8, XianJing = 15 }
+		end
 
 		StatusService:ApplyCosts(player, costs)
 		carrying[player.UserId] = false
@@ -221,14 +252,18 @@ function AlchemyTask.OnCraft(player, contextData)
 			SpecialEffects = specialEffects,
 		}
 	else
-		-- 炸炉：消耗精神，增加疲劳，无经验和火毒
-		StatusService:ApplyCosts(player, { Spirit = -20, Fatigue = 20 })
+		-- 炸炉：使用 FailureCost（从 StatsConfig 读取）
+		if taskCosts and taskCosts.FailureCost then
+			StatusService:ApplyCosts(player, taskCosts.FailureCost)
+		else
+			StatusService:ApplyCosts(player, { Spirit = -20, Fatigue = 20 })
+		end
 		carrying[player.UserId] = false
 
 		return true, {
 			Success = false,
 			Reason = "Explosion",
-			FatigueIncrease = 20,
+			FatigueIncrease = (taskCosts and taskCosts.FailureCost and taskCosts.FailureCost.Fatigue) or 20,
 		}
 	end
 end

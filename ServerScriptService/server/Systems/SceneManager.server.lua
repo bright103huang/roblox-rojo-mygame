@@ -70,6 +70,21 @@ local function teleportToScene(player, sceneName)
 
 	hrp.CFrame = CFrame.new(getSceneSpawnPosition(sceneName))
 	DataManager:UpdateField(player, "CurrentScene", sceneName)
+
+	-- 首次进入炼丹洞天时触发新手引导
+	if sceneName == "Alchemy" then
+		local data = DataManager:GetData(player)
+		if data and not data.HasSeenAlchemyTutorial then
+			data.HasSeenAlchemyTutorial = true
+			local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
+			if taskEvent then
+				taskEvent:FireClient(player, "AlchemyTutorial", {
+					Message = "炼丹三步曲：\n1. 触摸药材台捡起药材\n2. 触摸丹炉打开炼丹面板\n3. 选择配方，开始炼制！",
+				})
+			end
+		end
+	end
+
 	print("🚀 传送玩家 " .. player.Name .. " 到场景：" .. sceneName)
 	return true
 end

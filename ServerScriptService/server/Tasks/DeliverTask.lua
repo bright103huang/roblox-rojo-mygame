@@ -177,11 +177,15 @@ function DeliverTask.OnPlayerPickup(player, _area)
 		return false -- 没有活跃订单
 	end
 
-	-- 体力检查（接入新数值系统）
-	local canPerform, reason = StatusService:CanPerformTask(player, { Stamina = 15 })
-	if not canPerform then
-		print("❌ " .. player.Name .. " 传菜失败：" .. tostring(reason))
-		return false
+	-- 体力检查（从 StatsConfig 读取成本）
+	local taskCosts = StatusService:GetTaskCosts("Deliver")
+	local actionCost = taskCosts and taskCosts.ActionCost
+	if actionCost then
+		local canPerform, reason = StatusService:CanPerformTask(player, actionCost)
+		if not canPerform then
+			print("❌ " .. player.Name .. " 传菜失败：" .. tostring(reason))
+			return false
+		end
 	end
 
 	carrying[player.UserId] = true
@@ -247,13 +251,11 @@ function DeliverTask.OnPlayerDrop(player, area)
 
 	spawnPlateOnTable(currentTarget)
 
-	-- 应用状态消耗与收益（接入新数值系统）
-	StatusService:ApplyCosts(player, {
-		Stamina = -15,
-		Fatigue = 10,
-		AgilityExp = 5,
-		XianJing = 10,
-	})
+	-- 应用状态消耗与收益（从 StatsConfig 读取）
+	local taskCosts = StatusService:GetTaskCosts("Deliver")
+	if taskCosts and taskCosts.ApplyCost then
+		StatusService:ApplyCosts(player, taskCosts.ApplyCost)
+	end
 
 	print("✅ 传菜完成，状态已更新")
 
