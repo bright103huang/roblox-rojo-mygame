@@ -22,6 +22,19 @@ EconomyConfig.Rewards = {
 	BeastKill = {
 		["仙晶"] = 25,
 	},
+	BeastKill_Elite = {
+		["仙晶"] = 50,
+	},
+	BeastKill_Boss = {
+		["仙晶"] = 100,
+		["功德"] = 10,
+	},
+	DailyPray = {
+		["功德"] = 5,
+	},
+	DonatePill = {
+		["功德"] = 5,
+	},
 	Patrol = {
 		["仙晶"] = 5,
 	},

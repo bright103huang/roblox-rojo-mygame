@@ -56,23 +56,67 @@ local StatsConfig = {
 	-- ============================================================
 	TASK_COSTS = {
 		Deliver = {
-			Stamina = -15,
-			Fatigue = 10,
+			Stamina = -8, Spirit = -1, Fatigue = 5,
 			AgilityExp = 5,
 			Reward = { ["仙晶"] = 10 },
 		},
 		Alchemy = {
-			Spirit = -20,
-			FirePoison = 5,
+			Spirit = -10, FirePoison = 3, Fatigue = 3,
 			AlchemyExp = 8,
 			SuccessReward = { ["仙晶"] = 15 },
+			FailureCost = { Fatigue = 8, FirePoison = 5 }, -- 炸炉额外
+			FailurePenalty = { XianJing = -5 },
 		},
 		Beast = {
-			Stamina = -25,
-			Malice = 10,
+			Stamina = -12, Malice = 5,
 			CombatExp = 10,
 			Reward = { ["仙晶"] = 25 },
 		},
+	},
+
+	-- ============================================================
+	-- 连锁反应参数
+	-- ============================================================
+	CHAIN_REACTION = {
+		-- 过劳螺旋: Fatigue>80 时额外消耗
+		OVERWORK_EXTRA_FATIGUE = 2,
+		OVERWORK_SPIRIT_REDUCTION = 0.7,
+		-- 累倒: Fatigue>90
+		COLLAPSE_CHANCE = 0.1,
+		COLLAPSE_DURATION = 5,
+		COLLAPSE_FATIGUE_RESET = 50,
+		COLLAPSE_STAT_PENALTY = 10,
+		-- 昏厥: Fatigue=100
+		FAINT_DURATION = 10,
+		-- 火毒 DoT
+		FIREPOISON_DOT_INTERVAL = 10,
+		FIREPOISON_DOT_DAMAGE = 5,
+		FIREPOISON_SEVERE_DOT_INTERVAL = 5,
+		FIREPOISON_FATIGUE_INTERVAL = 30,
+		FIREPOISON_FATIGUE_AMOUNT = 1,
+		-- 火毒加速
+		FIREPOISON_SPIRIT_INTERVAL = 30,
+		FIREPOISON_SPIRIT_DAMAGE = 2,
+		-- 火毒影响
+		FIREPOISON_ALCHEMY_PENALTY = 0.3,
+		FIREPOISON_SEVERE_ALCHEMY_PENALTY = 0.5,
+		FIREPOISON_MEDICINE_HALVE_THRESHOLD = 90,
+		-- 戾气影响
+		MALICE_RISK_AMPLIFY = 2,
+		MALICE_SHOP_PENALTY = 0.2,
+		MALICE_MURDER_CYCLE_THRESHOLD = 90,
+		MALICE_MURDER_EXTRA = 5,
+		-- 链式反应条件
+		CHAIN_EXHAUSTION_FATIGUE = 80,
+		CHAIN_EXHAUSTION_POISON = 60,
+		CHAIN_DEMON_MALICE = 50,
+		CHAIN_DEMON_RISK = 60,
+		CHAIN_BURNOUT_STAMINA = 20,
+		CHAIN_BURNOUT_SPIRIT = 20,
+		CHAIN_TOXIN_FIREPOISON = 80,
+		CHAIN_TOXIN_MALICE = 60,
+		CHAIN_RAGE_FATIGUE = 80,
+		CHAIN_RAGE_MALICE = 80,
 	},
 
 	-- ============================================================

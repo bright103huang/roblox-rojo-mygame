@@ -57,7 +57,7 @@ screenGui.Parent = playerGui
 -- 主面板
 local frame = Instance.new("Frame")
 frame.Name = "StatusFrame"
-frame.Size = UDim2.new(0, 200, 0, 266)
+frame.Size = UDim2.new(0, 200, 0, 300)
 frame.Position = UDim2.new(1, -212, 0, 60)
 frame.BackgroundColor3 = COLORS.Bg
 frame.BackgroundTransparency = 0.35
@@ -107,6 +107,10 @@ local BAR_CONFIGS = {
 	{ Key = "Fatigue", Label = "疲劳", Color = COLORS.Fatigue, DangerColor = COLORS.FatigueDanger, DangerThreshold = 80, Invert = true },
 	{ Key = "FirePoison", Label = "火毒", Color = COLORS.FirePoison, DangerColor = COLORS.FirePoisonDanger, DangerThreshold = 60 },
 	{ Key = "Malice", Label = "戾气", Color = COLORS.Malice, DangerColor = COLORS.MaliceDanger, DangerThreshold = 50 },
+	{ Key = "Risk", Label = "妖气", Color = Color3.fromRGB(80, 200, 80),
+		DangerColor = Color3.fromRGB(255, 160, 40), DangerThreshold = 30,
+		CriticalColor = Color3.fromRGB(255, 50, 50), CriticalThreshold = 60,
+		RampageColor = Color3.fromRGB(255, 0, 0), RampageThreshold = 80 },
 }
 
 local Y_START = 28
@@ -186,6 +190,18 @@ levelText.Font = Enum.Font.SourceSansBold
 levelText.TextXAlignment = Enum.TextXAlignment.Left
 levelText.Parent = frame
 
+-- 风险等级文字
+local riskLevelLabel = Instance.new("TextLabel")
+riskLevelLabel.Name = "RiskLevel"
+riskLevelLabel.Size = UDim2.new(1, -12, 0, 16)
+riskLevelLabel.Position = UDim2.new(0, 6, 0, levelY + 60)
+riskLevelLabel.BackgroundTransparency = 1
+riskLevelLabel.Text = ""
+riskLevelLabel.TextSize = 12
+riskLevelLabel.Font = Enum.Font.SourceSansBold
+riskLevelLabel.TextXAlignment = Enum.TextXAlignment.Left
+riskLevelLabel.Parent = frame
+
 -- 红 line 警告文字（默认隐藏）
 local warningText = Instance.new("TextLabel")
 warningText.Size = UDim2.new(1, -12, 0, 18)
@@ -254,7 +270,18 @@ RunService.RenderStepped:Connect(function()
 		obj.PctLabel.Text = tostring(math.floor(value))
 
 		-- 危险阈值颜色变化
-		if cfg.DangerThreshold and value > cfg.DangerThreshold then
+		if key == "Risk" then
+			-- Risk 特殊颜色逻辑
+			if value >= 80 then
+				obj.Fill.BackgroundColor3 = cfg.RampageColor or Color3.fromRGB(255, 0, 0)
+			elseif value >= 60 then
+				obj.Fill.BackgroundColor3 = cfg.CriticalColor or Color3.fromRGB(255, 50, 50)
+			elseif value >= 30 then
+				obj.Fill.BackgroundColor3 = cfg.DangerColor or Color3.fromRGB(255, 160, 40)
+			else
+				obj.Fill.BackgroundColor3 = cfg.Color
+			end
+		elseif cfg.DangerThreshold and value > cfg.DangerThreshold then
 			obj.Fill.BackgroundColor3 = cfg.DangerColor or cfg.Color
 			table.insert(warnings, cfg.Label .. " " .. math.floor(value))
 		else
@@ -279,6 +306,28 @@ RunService.RenderStepped:Connect(function()
 		warningText.Text = "⚠️ 警告：" .. table.concat(warnings, " | ")
 	else
 		warningText.Text = ""
+	end
+
+	-- 更新风险等级文字
+	local riskVal = player:GetAttribute("Risk") or 0
+	local riskLevel, riskColor
+	if riskVal >= 80 then
+		riskLevel, riskColor = "大凶之兆", Color3.fromRGB(255, 50, 50)
+	elseif riskVal >= 60 then
+		riskLevel, riskColor = "危机四伏", Color3.fromRGB(255, 160, 40)
+	elseif riskVal >= 30 then
+		riskLevel, riskColor = "妖气隐现", Color3.fromRGB(200, 200, 80)
+	else
+		riskLevel, riskColor = "风平浪静", Color3.fromRGB(80, 200, 80)
+	end
+	riskLevelLabel.Text = "☯ " .. riskLevel
+	riskLevelLabel.TextColor3 = riskColor
+
+	-- 链式反应警告
+	local chainEvents = player:GetAttribute("ChainEvents") or ""
+	if chainEvents ~= "" then
+		warningText.Text = "⚠️ " .. chainEvents
+		warningText.TextColor3 = Color3.fromRGB(255, 100, 0)
 	end
 
 	-- 戾气 > 50 时脉冲特效
