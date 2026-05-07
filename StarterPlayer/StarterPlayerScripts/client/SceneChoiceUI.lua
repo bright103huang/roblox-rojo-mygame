@@ -1,5 +1,5 @@
 -- ============================================================
--- 文件：StarterPlayer.StarterPlayerScripts.Client.SceneChoiceUI.legacy.lua
+-- 文件：StarterPlayer.StarterPlayerScripts.Client.SceneChoiceUI.lua
 -- 功能：场景选择面板 — 资源耗尽或能力提升时弹出
 --       展示 5 个可选场景，点击切换
 -- ============================================================
@@ -16,7 +16,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- 获取 RemoteEvent
 -- ============================================================
 local eventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
-local SceneTeleportEvent = eventsFolder and eventsFolder:FindFirstChild("SceneTeleportEvent")
+local SceneTeleportEvent = eventsFolder and eventsFolder:WaitForChild("SceneTeleportEvent", 10)
 
 -- ============================================================
 -- 加载 SceneConfig（获取场景名称/描述）
@@ -54,8 +54,9 @@ local manualBtn = nil
 
 -- ============================================================
 -- 创建场景卡片
+-- @param isCurrentScene boolean 当前是否正在该场景中（禁用点击+置灰）
 -- ============================================================
-local function createSceneCard(parent, position, size, sceneId)
+local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 	local cfg = SceneConfig[sceneId]
 	if not cfg then
 		return nil
@@ -100,15 +101,11 @@ local function createSceneCard(parent, position, size, sceneId)
 	descLabel.TextWrapped = true
 	descLabel.Parent = card
 
-	-- 点击事件
-	local isCurrentScene = false
-
-	function card:setCurrent(val)
-		isCurrentScene = val
-		if val then
-			card.BackgroundColor3 = COLORS.CardDisabled
-			nameLabel.TextColor3 = COLORS.Gray
-		end
+	-- 点击 / 当前场景状态
+	-- 如果当前在此场景，置灰卡片并禁用点击
+	if isCurrentScene then
+		card.BackgroundColor3 = COLORS.CardDisabled
+		nameLabel.TextColor3 = COLORS.Gray
 	end
 
 	card.InputBegan:Connect(function(input)
@@ -203,7 +200,6 @@ function SceneChoiceUI:Open(triggerData)
 	-- 场景卡片网格 (2行: 第一行3个, 第二行2个)
 	local cardWidth = 130
 	local cardHeight = 90
-	local startX = 20
 	local startY = 65
 	local gapX = 20
 	local gapY = 15
@@ -218,14 +214,12 @@ function SceneChoiceUI:Open(triggerData)
 
 	for i, sceneId in ipairs(row1) do
 		local x = row1StartX + (i - 1) * (cardWidth + gapX)
-		local card = createSceneCard(panel,
+		createSceneCard(panel,
 			UDim2.new(0, x, 0, startY),
 			UDim2.new(0, cardWidth, 0, cardHeight),
-			sceneId
+			sceneId,
+			sceneId == currentScene
 		)
-		if card and sceneId == currentScene then
-			card:setCurrent(true)
-		end
 	end
 
 	-- 第二行 (2个居中)
@@ -234,21 +228,19 @@ function SceneChoiceUI:Open(triggerData)
 
 	for i, sceneId in ipairs(row2) do
 		local x = row2StartX + (i - 1) * (cardWidth + gapX)
-		local card = createSceneCard(panel,
+		createSceneCard(panel,
 			UDim2.new(0, x, 0, startY + cardHeight + gapY),
 			UDim2.new(0, cardWidth, 0, cardHeight),
-			sceneId
+			sceneId,
+			sceneId == currentScene
 		)
-		if card and sceneId == currentScene then
-			card:setCurrent(true)
-		end
 	end
 
 	-- 玩家状态栏
 	local statusY = startY + cardHeight * 2 + gapY * 2 + 10
 	local statusBg = Instance.new("Frame")
 	statusBg.Name = "StatusBar"
-	statusBg.Size = UDim2.new(0.9, 0, 0, 50)
+	statusBg.Size = UDim2.new(0.9, 0, 0, 75)
 	statusBg.Position = UDim2.new(0.05, 0, 0, statusY)
 	statusBg.BackgroundColor3 = COLORS.Bg
 	statusBg.BorderSizePixel = 0
@@ -282,8 +274,8 @@ function SceneChoiceUI:Open(triggerData)
 		if triggerData.TriggerDetail then
 			local triggerLabel = Instance.new("TextLabel")
 			triggerLabel.Name = "Trigger"
-			triggerLabel.Size = UDim2.new(1, -10, 0, 20)
-			triggerLabel.Position = UDim2.new(0, 5, 0, 28)
+			triggerLabel.Size = UDim2.new(1, -10, 0, 18)
+			triggerLabel.Position = UDim2.new(0, 5, 0, 26)
 			triggerLabel.BackgroundTransparency = 1
 			triggerLabel.Text = "触发：" .. triggerData.TriggerDetail
 			triggerLabel.TextColor3 = triggerData.TriggerType == "LevelUp" and COLORS.Green or COLORS.Red
@@ -292,6 +284,24 @@ function SceneChoiceUI:Open(triggerData)
 			triggerLabel.TextXAlignment = Enum.TextXAlignment.Left
 			triggerLabel.Parent = statusBg
 		end
+
+		-- 等级显示（从 Attribute 读取）
+		local levelY = triggerData.TriggerDetail and 46 or 28
+		local agilityLv = player:GetAttribute("Agility") or 1
+		local alchemyLv = player:GetAttribute("AlchemyLv") or 1
+		local combatLv = player:GetAttribute("Combat") or 1
+		local levelLabel = Instance.new("TextLabel")
+		levelLabel.Name = "Levels"
+		levelLabel.Size = UDim2.new(1, -10, 0, 18)
+		levelLabel.Position = UDim2.new(0, 5, 0, levelY)
+		levelLabel.BackgroundTransparency = 1
+		levelLabel.Text = string.format("身法 Lv.%d  火候 Lv.%d  仙力 Lv.%d",
+			agilityLv, alchemyLv, combatLv)
+		levelLabel.TextColor3 = COLORS.Gold
+		levelLabel.TextSize = 12
+		levelLabel.Font = Enum.Font.SourceSansBold
+		levelLabel.TextXAlignment = Enum.TextXAlignment.Left
+		levelLabel.Parent = statusBg
 	end
 
 	-- 关闭按钮

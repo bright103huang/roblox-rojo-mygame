@@ -128,15 +128,15 @@ end
 local function setupYiShanFangScene()
 	local origin = SCENES.YiShanFang
 
-	-- 地面（Z 从 -4 到 4，角色锁定在 Z=0，加宽至 140 使跑动距离翻倍）
-	createFloor(origin + Vector3.new(0, -0.5, 0), 140, 8, BrickColor.new("Bright yellow"), 0.1)
+	-- 地面（Z 从 -4 到 4，加宽至 170 覆盖取餐处 x=-80）
+	createFloor(origin + Vector3.new(0, -0.5, 0), 170, 8, BrickColor.new("Bright yellow"), 0.1)
 
 	-- 后墙（z=-4）
-	createWall(origin + Vector3.new(0, 3, -4), 140, 6, 0.5, BrickColor.new("Dark brown"))
-	createWall(origin + Vector3.new(0, 6.5, -4), 140, 1, 0.5, BrickColor.new("Bright red"))
+	createWall(origin + Vector3.new(0, 3, -4), 170, 6, 0.5, BrickColor.new("Dark brown"))
+	createWall(origin + Vector3.new(0, 6.5, -4), 170, 1, 0.5, BrickColor.new("Bright red"))
 
 	-- 前侧柱子（z=4，装饰层）
-	for x = -65, 65, 15 do
+	for x = -80, 80, 15 do
 		createPillar(origin + Vector3.new(x, 3, 4), 6, BrickColor.new("Dark brown"))
 	end
 
@@ -174,7 +174,7 @@ local function setupYiShanFangScene()
 		createDecor(origin + Vector3.new(xOffset + 1, 0.2, 2), Vector3.new(0.2, 0.5, 0.2), BrickColor.new("Dark brown"))
 	end
 
-	print("🍽️ 御膳房已就绪（取餐处: x=-80, 桌子: x=-50~50，跑动距离翻倍）")
+	print("🍽️ 御膳房已就绪（取餐处: x=-80, 桌子: x=-50~50, 地板 170 宽）")
 end
 
 -- ============================================================

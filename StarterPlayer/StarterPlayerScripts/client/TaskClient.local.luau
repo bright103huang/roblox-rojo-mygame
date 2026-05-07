@@ -62,7 +62,10 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 		end
 		if module then
 			local sceneChoiceUI = require(module)
-			sceneChoiceUI:Open(extraData)
+			local ok, err = pcall(sceneChoiceUI.Open, sceneChoiceUI, extraData)
+			if not ok then
+				warn("❌ SceneChoiceUI:Open 调用失败:", err)
+			end
 		else
 			warn("⚠️ SceneChoiceUI 模块未加载，刷新 SSS 同步后重试")
 		end

@@ -15,11 +15,14 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- ============================================================
 local function waitForAttributes()
 	for _, name in ipairs({ "Stamina", "Spirit", "Fatigue", "FirePoison", "Malice" }) do
-		local timeout = 30  -- 30 * 0.5s = 15s
+		local timeout = 60  -- 60 * 0.5s = 30s 超时保护
 		repeat
 			task.wait(0.5)
 			timeout -= 1
 		until player:GetAttribute(name) ~= nil or timeout <= 0
+		if timeout <= 0 then
+			warn("⚠️ StatusUI 等待属性超时:", name)
+		end
 	end
 end
 waitForAttributes()

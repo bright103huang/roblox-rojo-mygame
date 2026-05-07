@@ -109,6 +109,16 @@ local function onPlayerAdded(player)
 		player:SetAttribute("Stamina", data.Stamina or 100)
 		player:SetAttribute("Spirit", data.Spirit or 100)
 		player:SetAttribute("Fatigue", data.Fatigue or 0)
+		player:SetAttribute("FirePoison", data.FirePoison or 0)
+		player:SetAttribute("Malice", data.Malice or 0)
+
+		-- 同步永久属性等级
+		player:SetAttribute("Agility", data.Agility or 1)
+		player:SetAttribute("AlchemyLv", data.AlchemyLv or 1)
+		player:SetAttribute("Combat", data.Combat or 1)
+
+		-- 同步当前场景
+		player:SetAttribute("CurrentScene", data.CurrentScene or "YiShanFang")
 
 		-- 应用动态速度
 		SpeedCalculator.Apply(player)
