@@ -10,6 +10,7 @@ local DataManager = require(script.Parent.DataManager)
 local Config = require(ReplicatedStorage.Shared.Config)
 
 local StatsConfig = Config.Stats
+local RiskConfig = Config.Risk
 
 -- ============================================================
 -- 本地引用
@@ -122,6 +123,39 @@ function StatusService:ApplyCosts(player, costsTable)
 		end
 	end
 
+	-- 过劳螺旋: Fatigue>80 时额外 Fatigue+2
+	if (data.Fatigue or 0) > StatsConfig.FATIGUE_REDLINE then
+		local extraFatigue = StatsConfig.CHAIN_REACTION.OVERWORK_EXTRA_FATIGUE
+		data.Fatigue = math.min(StatsConfig.MAX_FATIGUE, data.Fatigue + extraFatigue)
+		DataManager:UpdateField(player, "Fatigue", data.Fatigue)
+	end
+
+	-- 累倒检测: Fatigue>90 概率触发
+	if (data.Fatigue or 0) > 90 and math.random() < StatsConfig.CHAIN_REACTION.COLLAPSE_CHANCE then
+		data.Fatigue = StatsConfig.CHAIN_REACTION.COLLAPSE_FATIGUE_RESET
+		data.Stamina = math.max(0, (data.Stamina or 0) - StatsConfig.CHAIN_REACTION.COLLAPSE_STAT_PENALTY)
+		data.Spirit = math.max(0, (data.Spirit or 0) - StatsConfig.CHAIN_REACTION.COLLAPSE_STAT_PENALTY)
+		DataManager:UpdateField(player, "Fatigue", data.Fatigue)
+		DataManager:UpdateField(player, "Stamina", data.Stamina)
+		DataManager:UpdateField(player, "Spirit", data.Spirit)
+		print("💤 " .. player.Name .. " 累倒了！强制休息")
+		-- 通知客户端
+		local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+		if eventsFolder then
+			local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
+			if taskEvent then
+				taskEvent:FireClient(player, "Collapsed", { Duration = StatsConfig.CHAIN_REACTION.COLLAPSE_DURATION })
+			end
+		end
+	end
+
+	-- 入魔倾向: 功德-1/action
+	if (data.Malice or 0) > StatsConfig.CHAIN_REACTION.CHAIN_DEMON_MALICE
+		and (data.Risk or 10) > StatsConfig.CHAIN_REACTION.CHAIN_DEMON_RISK then
+		data.GongDe = math.max(0, (data.GongDe or 0) - 1)
+		DataManager:UpdateField(player, "GongDe", data.GongDe)
+	end
+
 	-- 红线检测
 	self:CheckRedLines(player)
 
@@ -177,7 +211,7 @@ function StatusService:AddExp(player, attrField, amount)
 	end
 end
 
--- 红线检测
+-- 红线检测（增强版：含链式反应）
 function StatusService:CheckRedLines(player)
 	local data = DataManager:GetData(player)
 	if not data then return end
@@ -193,12 +227,87 @@ function StatusService:CheckRedLines(player)
 			local newStamina = math.max(0, (data.Stamina or StatsConfig.MAX_STAMINA) - StatsConfig.FIREPOISON_DOT_DAMAGE)
 			data.Stamina = newStamina
 			DataManager:UpdateField(player, "Stamina", newStamina)
-			print("🔥 火毒发作，" .. player.Name .. " Stamina -" .. StatsConfig.FIREPOISON_DOT_DAMAGE)
+		end
+
+		-- 链式反应：火毒 > 60 导致 Fatigue 缓慢增加
+		local fatigueTimer = firePoisonTimers[userId .. "_fatigue"] or 0
+		if firePoison > 60 and now - fatigueTimer >= StatsConfig.CHAIN_REACTION.FIREPOISON_FATIGUE_INTERVAL then
+			firePoisonTimers[userId .. "_fatigue"] = now
+			data.Fatigue = math.min(StatsConfig.MAX_FATIGUE, (data.Fatigue or 0) + StatsConfig.CHAIN_REACTION.FIREPOISON_FATIGUE_AMOUNT)
+			DataManager:UpdateField(player, "Fatigue", data.Fatigue)
 		end
 	end
 
-	-- 戾气 > 50: 提示（具体限制在任务中执行）
-	-- 疲劳红线由 SpeedCalculator 处理（速度计算时自动应用）
+	-- 火毒 > 80: DoT 加速 + Spirit 侵蚀
+	if firePoison > 80 then
+		local now = tick()
+		local severeTimer = firePoisonTimers[userId .. "_severe"] or 0
+		if now - severeTimer >= StatsConfig.CHAIN_REACTION.FIREPOISON_SEVERE_DOT_INTERVAL then
+			firePoisonTimers[userId .. "_severe"] = now
+			local newStamina = math.max(0, (data.Stamina or StatsConfig.MAX_STAMINA) - StatsConfig.FIREPOISON_DOT_DAMAGE)
+			data.Stamina = newStamina
+			DataManager:UpdateField(player, "Stamina", newStamina)
+		end
+
+		-- Spirit 侵蚀
+		local spiritTimer = firePoisonTimers[userId .. "_spirit"] or 0
+		if now - spiritTimer >= StatsConfig.CHAIN_REACTION.FIREPOISON_SPIRIT_INTERVAL then
+			firePoisonTimers[userId .. "_spirit"] = now
+			data.Spirit = math.max(0, (data.Spirit or StatsConfig.MAX_SPIRIT) - StatsConfig.CHAIN_REACTION.FIREPOISON_SPIRIT_DAMAGE)
+			DataManager:UpdateField(player, "Spirit", data.Spirit)
+		end
+	end
+
+	-- 链式反应检测
+	self:ChainReactionCheck(player, data)
+end
+
+-- 链式反应检测
+function StatusService:ChainReactionCheck(player, data)
+	local fatigue = data.Fatigue or 0
+	local firePoison = data.FirePoison or 0
+	local malice = data.Malice or 0
+	local stamina = data.Stamina or 0
+	local spirit = data.Spirit or 0
+	local risk = data.Risk or 10
+	local events = {}
+
+	-- 1. 虚不受补: Fatigue>80 + FirePoison>60
+	if fatigue > StatsConfig.CHAIN_REACTION.CHAIN_EXHAUSTION_FATIGUE
+		and firePoison > StatsConfig.CHAIN_REACTION.CHAIN_EXHAUSTION_POISON then
+		table.insert(events, "虚不受补")
+	end
+
+	-- 2. 入魔倾向: Malice>50 + Risk>60
+	if malice > StatsConfig.CHAIN_REACTION.CHAIN_DEMON_MALICE
+		and risk > StatsConfig.CHAIN_REACTION.CHAIN_DEMON_RISK then
+		table.insert(events, "入魔倾向")
+	end
+
+	-- 3. 油尽灯枯: Stamina<20 + Spirit<20
+	if stamina < StatsConfig.CHAIN_REACTION.CHAIN_BURNOUT_STAMINA
+		and spirit < StatsConfig.CHAIN_REACTION.CHAIN_BURNOUT_SPIRIT then
+		table.insert(events, "油尽灯枯")
+	end
+
+	-- 4. 毒戾入体: FirePoison>80 + Malice>60
+	if firePoison > StatsConfig.CHAIN_REACTION.CHAIN_TOXIN_FIREPOISON
+		and malice > StatsConfig.CHAIN_REACTION.CHAIN_TOXIN_MALICE then
+		table.insert(events, "毒戾入体")
+	end
+
+	-- 5. 狂躁: Fatigue>80 + Malice>80
+	if fatigue > StatsConfig.CHAIN_REACTION.CHAIN_RAGE_FATIGUE
+		and malice > StatsConfig.CHAIN_REACTION.CHAIN_RAGE_MALICE then
+		table.insert(events, "狂躁")
+	end
+
+	-- 通知客户端（通过 Attribute 传递）
+	if #events > 0 then
+		player:SetAttribute("ChainEvents", table.concat(events, ","))
+	else
+		player:SetAttribute("ChainEvents", "")
+	end
 end
 
 -- ============================================================
@@ -245,5 +354,30 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 print("✅ StatusService 已启动")
+
+-- ============================================================
+-- Risk 自然衰减循环
+-- ============================================================
+task.spawn(function()
+	while true do
+		task.wait(RiskConfig.Decay.RealDecayInterval)  -- 120 seconds
+
+		for _, player in ipairs(Players:GetPlayers()) do
+			local data = DataManager:GetData(player)
+			if not data then continue end
+
+			local currentRisk = data.Risk or RiskConfig.InitialRisk
+			if currentRisk <= RiskConfig.Decay.MinRisk then continue end
+
+			local gongDe = data.GongDe or 0
+			local boost = math.floor(gongDe / 20) * RiskConfig.Decay.GongDeBoostPer20
+			local decayAmount = RiskConfig.Decay.BaseDecayPerTick + boost
+
+			local newRisk = math.max(RiskConfig.Decay.MinRisk, currentRisk - decayAmount)
+			data.Risk = newRisk
+			DataManager:UpdateField(player, "Risk", newRisk)
+		end
+	end
+end)
 
 return StatusService

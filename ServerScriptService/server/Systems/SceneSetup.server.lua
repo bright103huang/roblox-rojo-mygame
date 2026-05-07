@@ -8,6 +8,10 @@
 -- ============================================================
 -- 场景坐标配置（与 SceneConfig 保持一致）
 -- ============================================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataManager = require(script.Parent.DataManager)
+
 local SCENES = {
 	YiShanFang = Vector3.new(0, 3, 0),
 	Alchemy    = Vector3.new(1000, 3, 0),
@@ -345,15 +349,105 @@ local function setupHomeScene()
 	createDecor(origin + Vector3.new(0, 0.3, 0), Vector3.new(3, 0.4, 3), BrickColor.new("Gold"), Enum.PartType.Cylinder)
 	createDecor(origin + Vector3.new(0, 0.5, 0), Vector3.new(2, 0.2, 2), BrickColor.new("Bright orange"), Enum.PartType.Cylinder)
 
-	-- 炼化区（交互区域，Z=0）
-	createArea({
+	-- 炼化区（交互区域，Z=0）— 冥想恢复
+	local cultivationPart = createArea({
 		Name = "HomeCultivation",
 		Position = origin + Vector3.new(0, 1, 0),
 		Size = Vector3.new(3, 0.5, 3),
 		Color = BrickColor.new("Gold"),
 		Transparency = 0.2,
-		Label = "炼化区",
+		Label = "冥想炼化",
 	})
+
+	-- 冥想恢复逻辑
+	local meditating = {}  -- [userId] = true
+	cultivationPart.Touched:Connect(function(hit)
+		local char = hit.Parent
+		local player = Players:GetPlayerFromCharacter(char)
+		if not player then return end
+		if meditating[player.UserId] then return end
+		-- 戾气 > 50 时不可冥想
+		local malice = player:GetAttribute("Malice") or 0
+		if malice > 50 then
+			local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+			if eventsFolder then
+				local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
+				if taskEvent then
+					taskEvent:FireClient(player, "MeditationBlocked", { Reason = "戾气过重，无法入定" })
+				end
+			end
+			return
+		end
+
+		meditating[player.UserId] = true
+		-- 冥想协程
+		task.spawn(function()
+			local maxDuration = 30  -- 最多冥想 30 秒
+			local elapsed = 0
+			while meditating[player.UserId] and elapsed < maxDuration do
+				task.wait(5)
+				elapsed += 5
+				-- 检查玩家是否还在附近（10 格内）
+				local char = player.Character
+				if not char then break end
+				local root = char:FindFirstChild("HumanoidRootPart")
+				if not root then break end
+				local dist = (root.Position - cultivationPart.Position).Magnitude
+				if dist > 10 then break end
+
+				-- 应用恢复
+				local data = DataManager and DataManager:GetData(player)
+				if data then
+					data.Stamina = math.min(100, (data.Stamina or 0) + 3)
+					data.Spirit = math.min(100, (data.Spirit or 0) + 3)
+					data.Fatigue = math.max(0, (data.Fatigue or 0) - 1)
+					DataManager:UpdateField(player, "Stamina", data.Stamina)
+					DataManager:UpdateField(player, "Spirit", data.Spirit)
+					DataManager:UpdateField(player, "Fatigue", data.Fatigue)
+				end
+			end
+			meditating[player.UserId] = nil
+		end)
+	end)
+	-- 玩家离开时停止冥想
+	cultivationPart.ChildRemoved:Connect(function(child)
+		-- 不直接处理，由协程的距离检查处理
+	end)
+
+	-- 祈福台（每日功德）
+	local prayerPart = createArea({
+		Name = "PrayerAltar",
+		Position = origin + Vector3.new(-8, 1, 0),
+		Size = Vector3.new(2, 0.5, 2),
+		Color = BrickColor.new("Bright yellow"),
+		Transparency = 0.1,
+		Label = "祈福台（每日功德）",
+		Attrs = { PrayerReward = 5 },
+	})
+	local prayerDebounce = {}
+	prayerPart.Touched:Connect(function(hit)
+		local char = hit.Parent
+		local player = Players:GetPlayerFromCharacter(char)
+		if not player then return end
+		if prayerDebounce[player.UserId] then return end
+
+		-- 检查是否今日已祈福
+		local data = DataManager and DataManager:GetData(player)
+		if not data then return end
+		local todayKey = os.date("%Y%m%d")
+		if data.LastPrayerDate == todayKey then
+			return
+		end
+
+		prayerDebounce[player.UserId] = true
+		data.GongDe = (data.GongDe or 0) + 5
+		data.LastPrayerDate = todayKey
+		DataManager:UpdateField(player, "GongDe", data.GongDe)
+		print("🙏 " .. player.Name .. " 祈福获得 5 功德")
+
+		task.wait(1)
+		prayerDebounce[player.UserId] = nil
+	end)
 
 	-- 药架（z=-3 装饰层）
 	createDecor(origin + Vector3.new(-8, 1, -3), Vector3.new(3, 2.5, 0.5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
