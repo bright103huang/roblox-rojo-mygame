@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
@@ -54,6 +55,8 @@ local SceneChoiceUI = {}
 local screenGui = nil
 local isOpen = false
 local manualBtn = nil
+local transitionOverlay = nil
+local transitionLabel = nil
 
 -- ============================================================
 -- 创建场景卡片
@@ -154,6 +157,15 @@ local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 		if isCurrentScene then return end
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
+			-- 过渡动画：淡入黑屏 + 显示场景名
+			local cfg = SceneConfig[sceneId]
+			transitionLabel.Text = "前往 " .. (cfg and cfg.DisplayName or sceneId)
+			transitionOverlay.Visible = true
+			local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			local tween = TweenService:Create(transitionOverlay, tweenInfo, { BackgroundTransparency = 0 })
+			tween:Play()
+			tween.Completed:Wait()
+
 			if SceneTeleportEvent then
 				SceneTeleportEvent:FireServer(sceneId)
 			end
@@ -239,6 +251,30 @@ function SceneChoiceUI:Open(triggerData)
 	divider.Parent = panel
 
 	-- 场景卡片网格 (2行: 第一行3个, 第二行2个)
+
+	-- 传送过渡遮罩（初始隐藏）
+	transitionOverlay = Instance.new("Frame")
+	transitionOverlay.Name = "TransitionOverlay"
+	transitionOverlay.Size = UDim2.new(1, 0, 1, 0)
+	transitionOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	transitionOverlay.BackgroundTransparency = 1
+	transitionOverlay.BorderSizePixel = 0
+	transitionOverlay.ZIndex = 100
+	transitionOverlay.Visible = false
+	transitionOverlay.Parent = screenGui
+
+	transitionLabel = Instance.new("TextLabel")
+	transitionLabel.Name = "TransitionLabel"
+	transitionLabel.Size = UDim2.new(1, 0, 0, 60)
+	transitionLabel.Position = UDim2.new(0, 0, 0.5, -30)
+	transitionLabel.BackgroundTransparency = 1
+	transitionLabel.Text = ""
+	transitionLabel.TextColor3 = COLORS.Gold
+	transitionLabel.TextSize = 36
+	transitionLabel.Font = Enum.Font.SourceSansBold
+	transitionLabel.ZIndex = 101
+	transitionLabel.Parent = transitionOverlay
+
 	local cardWidth = 130
 	local cardHeight = 110
 	local startY = 65
@@ -371,6 +407,8 @@ function SceneChoiceUI:Close()
 		screenGui:Destroy()
 		screenGui = nil
 	end
+	transitionOverlay = nil
+	transitionLabel = nil
 	-- 恢复手动按钮
 	if manualBtn then
 		manualBtn.Visible = true
