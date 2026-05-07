@@ -38,10 +38,13 @@ local COLORS = {
 	Green = Color3.fromRGB(80, 200, 80),
 	White = Color3.new(1, 1, 1),
 	Gray = Color3.fromRGB(150, 150, 150),
-	DarkGray = Color3.fromRGB(60, 60, 60),
 	CardBg = Color3.fromRGB(40, 40, 60),
 	CardHover = Color3.fromRGB(55, 55, 80),
 	CardDisabled = Color3.fromRGB(35, 35, 40),
+	-- 场景类型颜色
+	TypeWork = Color3.fromRGB(50, 80, 120),
+	TypeShop = Color3.fromRGB(50, 100, 60),
+	TypeHome = Color3.fromRGB(100, 85, 50),
 }
 
 -- ============================================================
@@ -62,9 +65,16 @@ local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 		return nil
 	end
 
+	local icon = cfg.Icon or ""
+	local sceneType = cfg.SceneType or ""
 	local displayName = cfg.DisplayName or sceneId
 	local description = cfg.Description or ""
+	local trainLabel = cfg.TrainLabel or ""
+	local costDisplay = cfg.CostDisplay or ""
+	local rewardDisplay = cfg.RewardDisplay or ""
+	local isWork = sceneType == "Work"
 
+	-- 卡片主框架
 	local card = Instance.new("Frame")
 	card.Name = "Card_" .. sceneId
 	card.Size = size
@@ -76,33 +86,65 @@ local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 	cardCorner.CornerRadius = UDim.new(0, 10)
 	cardCorner.Parent = card
 
-	-- 场景名
+	-- 场景类型色条（顶部细线装饰）
+	if sceneType == "Work" then
+		local accent = Instance.new("Frame")
+		accent.Size = UDim2.new(1, -4, 0, 3)
+		accent.Position = UDim2.new(0, 2, 0, 2)
+		accent.BackgroundColor3 = COLORS.TypeWork
+		accent.BorderSizePixel = 0
+		accent.Parent = card
+		local accentCorner = Instance.new("UICorner")
+		accentCorner.CornerRadius = UDim.new(0, 3)
+		accentCorner.Parent = accent
+	end
+
+	-- 图标 + 场景名
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Name = "Name"
-	nameLabel.Size = UDim2.new(1, -10, 0, 30)
+	nameLabel.Size = UDim2.new(1, -10, 0, 24)
 	nameLabel.Position = UDim2.new(0, 5, 0, 8)
 	nameLabel.BackgroundTransparency = 1
-	nameLabel.Text = displayName
+	nameLabel.Text = icon .. " " .. displayName
 	nameLabel.TextColor3 = COLORS.Gold
-	nameLabel.TextSize = 18
+	nameLabel.TextSize = 16
 	nameLabel.Font = Enum.Font.SourceSansBold
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Parent = card
 
 	-- 描述
 	local descLabel = Instance.new("TextLabel")
 	descLabel.Name = "Desc"
-	descLabel.Size = UDim2.new(1, -10, 0, 40)
-	descLabel.Position = UDim2.new(0, 5, 0, 38)
+	descLabel.Size = UDim2.new(1, -10, 0, isWork and 26 or 42)
+	descLabel.Position = UDim2.new(0, 5, 0, 34)
 	descLabel.BackgroundTransparency = 1
 	descLabel.Text = description
 	descLabel.TextColor3 = COLORS.Gray
-	descLabel.TextSize = 13
+	descLabel.TextSize = 11
 	descLabel.Font = Enum.Font.SourceSans
 	descLabel.TextWrapped = true
+	descLabel.TextXAlignment = Enum.TextXAlignment.Left
+	descLabel.TextYAlignment = Enum.TextYAlignment.Top
 	descLabel.Parent = card
 
+	-- 打工场景：消耗/收益信息行
+	if isWork then
+		local infoLabel = Instance.new("TextLabel")
+		infoLabel.Name = "Info"
+		infoLabel.Size = UDim2.new(1, -10, 0, 36)
+		infoLabel.Position = UDim2.new(0, 5, 0, 62)
+		infoLabel.BackgroundTransparency = 1
+		infoLabel.Text = "训练:" .. trainLabel .. "  |  " .. costDisplay .. "\n" .. rewardDisplay
+		infoLabel.TextColor3 = Color3.fromRGB(180, 200, 220)
+		infoLabel.TextSize = 9
+		infoLabel.Font = Enum.Font.SourceSans
+		infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+		infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+		infoLabel.RichText = true
+		infoLabel.Parent = card
+	end
+
 	-- 点击 / 当前场景状态
-	-- 如果当前在此场景，置灰卡片并禁用点击
 	if isCurrentScene then
 		card.BackgroundColor3 = COLORS.CardDisabled
 		nameLabel.TextColor3 = COLORS.Gray
@@ -112,7 +154,6 @@ local function createSceneCard(parent, position, size, sceneId, isCurrentScene)
 		if isCurrentScene then return end
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
-			-- 切换场景
 			if SceneTeleportEvent then
 				SceneTeleportEvent:FireServer(sceneId)
 			end
@@ -199,7 +240,7 @@ function SceneChoiceUI:Open(triggerData)
 
 	-- 场景卡片网格 (2行: 第一行3个, 第二行2个)
 	local cardWidth = 130
-	local cardHeight = 90
+	local cardHeight = 110
 	local startY = 65
 	local gapX = 20
 	local gapY = 15
