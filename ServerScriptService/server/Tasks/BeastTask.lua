@@ -1,7 +1,7 @@
 -- ============================================================
 -- 文件：ServerScriptService.Server.Tasks.BeastTask.lua
--- 功能：妖兽战场任务处理器
--- 架构：Task Handler 模式，被 TaskService 调度器调用
+-- 功能：妖兽角斗场任务处理器
+-- 架构：Processor — 仅处理召唤，战斗由 BeastNPC 内部管理
 -- ============================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,7 +16,7 @@ local BeastNPC = require(script.Parent.Parent.Systems.BeastNPC)
 local pendingSpawn = {}  -- [userId] = true（1 秒冷却）
 
 -- ============================================================
--- BeastTask（处理器接口）
+-- BeastTask
 -- ============================================================
 
 local BeastTask = {}
@@ -34,13 +34,13 @@ function BeastTask.OnPlayerPickup(player, area)
 		return false
 	end
 
-	-- 体力检查（从 StatsConfig 读取）
+	-- 体力检查
 	local taskCosts = StatusService:GetTaskCosts("Beast")
 	local actionCost = taskCosts and taskCosts.ActionCost
 	if actionCost then
 		local canPerform, reason = StatusService:CanPerformTask(player, actionCost)
 		if not canPerform then
-			print("❌ " .. player.Name .. " 狩猎失败：" .. tostring(reason))
+			print("❌ " .. player.Name .. " 挑战角斗场失败：" .. tostring(reason))
 			return false
 		end
 	end
@@ -57,55 +57,26 @@ function BeastTask.OnPlayerPickup(player, area)
 		pendingSpawn[player.UserId] = nil
 	end)
 
-	BeastNPC.SpawnBeast(player, area, tier)
+	-- 找到场景中的 BeastSpawn Part
+	local spawnPart = nil
+	if type(area) == "table" and area.PartName then
+		spawnPart = workspace:FindFirstChild(area.PartName, true)
+	end
+	if not spawnPart then
+		spawnPart = area
+	end
 
-	-- 标记客户端 carrying（用于区分触摸 BeastSpawn vs BeastHitbox）
+	BeastNPC.SpawnBeast(player, spawnPart, tier)
 	return true
 end
 
--- 不使用 Drop（攻击通过 OnAttack）
 function BeastTask.OnPlayerDrop(player, _area)
 	return false, "NotSupported"
 end
 
--- 玩家攻击妖兽（触摸 BeastHitbox）
+-- 战斗由 BeastNPC 内部自动管理，无需外部调用
 function BeastTask.OnAttack(player, contextData)
-	-- contextData = { BeastId = number }
-	local beastId = contextData and contextData.BeastId
-	if not beastId then
-		-- 尝试通过 Part 查找
-		local hitPart = contextData and contextData.Part
-		if hitPart then
-			local beast = BeastNPC.GetBeastByPart(hitPart)
-			if not beast then return false, "NoBeast" end
-			beastId = beast.Id
-		else
-			return false, "NoBeast"
-		end
-	end
-
-	local ok, result = BeastNPC.PlayerAttackBeast(beastId, player)
-	if not ok then
-		return false, result
-	end
-
-	if result.Killed then
-		-- 击杀奖励：状态消耗 + 收益（从 StatsConfig 读取）
-		local taskCosts = StatusService:GetTaskCosts("Beast")
-		if taskCosts and taskCosts.ApplyCost then
-			StatusService:ApplyCosts(player, taskCosts.ApplyCost)
-		else
-			StatusService:ApplyCosts(player, {
-				Stamina = -25,
-				Malice = 10,
-				CombatExp = 10,
-				XianJing = 25,
-			})
-		end
-		print("⚔ " .. player.Name .. " 击杀了妖兽！")
-	end
-
-	return true, result
+	return false, "NoManualAttack"
 end
 
 return BeastTask

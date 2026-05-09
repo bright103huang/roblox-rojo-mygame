@@ -42,6 +42,37 @@
 
 ---
 
+## 三步工作法（Skills 调用铁律）
+
+> **做任何事前必须先走完三步：①查已有 skills → ②不够就 find-skills → ③带上再工作。**
+
+这是我（主代理）和所有子代理都必须遵守的纪律，不是可选项。
+
+### 主代理三步走
+
+每次接到任务后、动手前：
+
+1. **查 skills 列表** — 扫描当前会话中的 skills 列表，选出所有可能相关的 skill
+2. **没有合适的？调 `find-skills`** — 如果现有 skills 没有覆盖当前任务的，先调 `find-skills` 搜索安装
+3. **加载 skill 再开工** — 调 Skill tool 加载选中的技能，然后才开始干活（读代码、问问题、设计方案都不算"干活"）
+
+### 派发子代理时的要求
+
+在 sub-agent 的 prompt 末尾必须加上：
+
+> 开始工作前，请先调用以下 skill(s)：[skill1], [skill2]
+
+### 仙官司对应的必选 skills
+
+| 司 | 必调 skills |
+|---|-----------|
+| 灵感司 | `brainstorming` |
+| 执行司 | `roblox-game-development` |
+| 查察司 | `systematic-debugging` + `roblox-game-development` |
+| 诊察司 | `systematic-debugging` + `roblox-game-development` |
+
+---
+
 ## 仙官司体系（AI 子代理）
 
 ### 四司精简架构
@@ -64,6 +95,8 @@
 - **git 提交**（版本管理）
 
 ### 各司职责
+
+各司被调度时，必须遵守"三步工作法"（查 skills → find-skills → 加载再开工），并在子代理 prompt 末尾注明需要调用的 skills。
 
 **灵感司** — 动工前的第一步（调 `brainstorming` skill）
 - 与你探讨需求，一次只问一个问题
@@ -93,11 +126,13 @@
 
 ### 标准调度流程
 
+每一步启动 sub-agent 前，我都按"三步工作法"在 prompt 中指定该司需要加载的 skills。
+
 ```
-日常小改动: 我直接改 → 查察司审查
-中型功能:   执行司实现 → 查察司审查
-大型功能:   灵感司设计 → 我审阅 → 执行司实现 → 查察司审查
-Bug修复:    诊察司定位 → 执行司修复（或我直接修）→ 诊察司验证
+日常小改动: 我直接改（走三步工作法）→ 查察司审查
+中型功能:   执行司实现（加载 roblox-game-development）→ 查察司审查
+大型功能:   灵感司设计（加载 brainstorming）→ 我审阅 → 执行司实现 → 查察司审查
+Bug修复:    诊察司定位（加载 systematic-debugging + roblox-game-development）→ 执行司修复（或我直接修）→ 诊察司验证
 ```
 
 ---

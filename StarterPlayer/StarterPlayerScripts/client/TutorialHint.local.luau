@@ -1,6 +1,6 @@
 -- ============================================================
 -- 文件：StarterPlayer.StarterPlayerScripts.Client.TutorialHint.local.luau
--- 功能：动态创建新手引导提示，首次交付成功后淡出
+-- 功能：场景感知新手引导提示，首次完成场景目标后淡出
 -- ============================================================
 
 local Players = game:GetService("Players")
@@ -22,7 +22,6 @@ hintFrame.BackgroundTransparency = 0.3
 hintFrame.BorderSizePixel = 0
 hintFrame.Parent = tutorialUI
 
--- 圆角
 local corner = Instance.new("UICorner", hintFrame)
 corner.CornerRadius = UDim.new(0, 8)
 
@@ -37,14 +36,38 @@ hintText.TextStrokeTransparency = 0.5
 hintText.TextStrokeColor3 = Color3.new(0, 0, 0)
 hintText.Parent = hintFrame
 
--- ========== 2. 黑色幽默提示词 ==========
-local MESSAGES = {
-	[1] = "🐂 传菜员请注意：左边取仙桃，右边上菜。干得好今晚加鸡腿，干不好明晚变鸡腿。",
-	[2] = "🍑 你的任务：把左边的桃子送到右边亮⭐的桌上。别问为什么，问就是仙界编制内。",
-	[3] = "📦 左取右送，就这么简单。要是送错了……看见那边炼丹炉了吗？",
-	[4] = "🧚 小仙您好，您今日的福报已到账：无限传菜。左边拿，右边送，卷死其他临时工。",
+-- ========== 2. 场景感知提示词 ==========
+local SCENE_HINTS = {
+	YiShanFang = {
+		"🐂 传菜员请注意：左边取仙桃，右边上菜。干得好今晚加鸡腿，干不好明晚变鸡腿。",
+		"🍑 你的任务：把左边的桃子送到右边亮⭐的桌上。别问为什么，问就是仙界编制内。",
+		"📦 左取右送，就这么简单。要是送错了……看见那边炼丹炉了吗？",
+		"🧚 小仙您好，您今日的福报已到账：无限传菜。左边拿，右边送，卷死其他临时工。",
+	},
+	Beast = {
+		"🏟️ 踏入角斗场中央红区→妖兽从右侧铁门冲出，三次碰撞定胜负！",
+		"⚔️ 走到妖兽面前→自动冲锋碰撞！连撞三次后结算输赢。",
+		"💪 仙力越强胜率越高！每次胜利获得仙力经验和仙晶。",
+		"😈 小心！20%概率碰到更强的妖兽，打不过会受伤扣体力。",
+		"🔄 打不过就跑远点，妖兽会自动消失，下次再来！",
+	},
 }
-hintText.Text = MESSAGES[math.random(1, #MESSAGES)]
+
+-- 获取当前场景的随机提示
+local function getHintForScene(scene)
+	local hints = SCENE_HINTS[scene] or SCENE_HINTS.YiShanFang
+	return hints[math.random(1, #hints)]
+end
+
+-- 监听场景变化切换提示
+local function onSceneChanged()
+	local scene = player:GetAttribute("CurrentScene") or "YiShanFang"
+	hintText.Text = getHintForScene(scene)
+end
+
+-- 初始设置
+onSceneChanged()
+player:GetAttributeChangedSignal("CurrentScene"):Connect(onSceneChanged)
 
 -- ========== 3. 等待 TaskEvent（防超时） ==========
 local function waitForEvents()
@@ -89,10 +112,15 @@ local function fadeOut()
 	tutorialUI:Destroy()
 end
 
--- ========== 5. 监听首次交付成功 ==========
+-- ========== 5. 场景感知首次完成监听 ==========
 local connection
-connection = TaskEvent.OnClientEvent:Connect(function(result)
-	if result == "DropSuccess" then
+connection = TaskEvent.OnClientEvent:Connect(function(result, extraData)
+	local scene = player:GetAttribute("CurrentScene")
+
+	if scene == "YiShanFang" and result == "DropSuccess" then
+		fadeOut()
+		connection:Disconnect()
+	elseif scene == "Beast" and result == "BeastVictory" then
 		fadeOut()
 		connection:Disconnect()
 	end

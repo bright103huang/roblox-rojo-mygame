@@ -48,7 +48,7 @@ local StatsConfig = {
 	-- ============================================================
 	-- 速度计算基础
 	-- ============================================================
-	BASE_SPEED = 16,
+	BASE_SPEED = 32,
 	AGILITY_SPEED_PER_LEVEL = 0.5, -- 每级身法增加 WalkSpeed
 
 	-- ============================================================
@@ -68,8 +68,8 @@ local StatsConfig = {
 		},
 		Beast = {
 			ActionCost = { Stamina = 12 },
-			ApplyCost = { Stamina = -12, Malice = 5, CombatExp = 10, XianJing = 25 },
-			Display = "体力-12  戾气+5  仙力exp+10  仙晶+25",
+			ApplyCost = { Stamina = -8, Malice = 3, CombatExp = 8, XianJing = 20 },
+			Display = "入场体力-12 | 碰撞3回决胜 | 仙力exp+8  仙晶+20",
 		},
 		Patrol = {
 			ActionCost = { Stamina = 10 },

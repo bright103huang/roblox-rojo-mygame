@@ -379,44 +379,161 @@ local function setupAlchemyScene()
 end
 
 -- ============================================================
--- 妖兽战场 — 2D 横版布局
+-- 妖兽战场 — 2D 横版角斗场（摄像机在 z=30，前侧不能有高墙）
+-- 设计：宏大的背景墙(z=-9) + 低矮前围栏(z=4) + 中央战场
 -- ============================================================
 local function setupBeastScene()
 	local origin = SCENES.Beast
 
-	-- 地面
-	createFloor(origin + Vector3.new(0, -0.5, 0), 50, 8, BrickColor.new("Brown"), 0.1)
+	-- ============================================================
+	-- 地面：140 × 12（半个足球场的感觉）
+	-- ============================================================
+	createFloor(origin + Vector3.new(0, -0.5, 0), 140, 12, BrickColor.new("Light stone"), 0.05)
 
-	-- 后围栏（z=-3）
-	createDecor(origin + Vector3.new(0, 1, -3), Vector3.new(50, 2, 0.5), BrickColor.new("Dark stone"), nil, Enum.Material.Slate)
+	-- ============================================================
+	-- 地面标记：中央战斗圈（同心圆环）
+	-- ============================================================
+	for r = 2, 10, 2 do
+		local ring = createDecor(
+			origin + Vector3.new(0, 0.05, 0),
+			Vector3.new(r * 2, 0.05, r * 2),
+			BrickColor.new("Dark grey"),
+			Enum.PartType.Ball,
+			Enum.Material.SmoothPlastic
+		)
+		ring.Transparency = 0.5 + (r / 10) * 0.4
+		ring.CanCollide = false
+	end
+	-- 中央十字线
+	createDecor(origin + Vector3.new(0, 0.05, 0), Vector3.new(30, 0.05, 0.3), BrickColor.new("Dark grey"), nil, Enum.Material.SmoothPlastic).Transparency = 0.6
+	createDecor(origin + Vector3.new(0, 0.05, 0), Vector3.new(0.3, 0.05, 8), BrickColor.new("Dark grey"), nil, Enum.Material.SmoothPlastic).Transparency = 0.6
 
-	-- 前围栏（z=3）
-	createDecor(origin + Vector3.new(0, 1, 3), Vector3.new(50, 2, 0.5), BrickColor.new("Dark stone"), nil, Enum.Material.Slate)
+	-- ============================================================
+	-- 后墙（z=-9）：12 高双层竞技场围墙 — 宏大背景
+	-- ============================================================
+	-- 下层主墙
+	createDecor(origin + Vector3.new(0, 3.5, -9), Vector3.new(120, 7, 0.8), BrickColor.new("Dark stone"), nil, Enum.Material.Slate)
+	-- 上层墙
+	createDecor(origin + Vector3.new(0, 9, -9), Vector3.new(120, 4, 0.8), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
 
-	-- 角柱 + 火把
-	for _, x in ipairs({ -23, 23 }) do
-		createDecor(origin + Vector3.new(x, 3, -3), Vector3.new(1.5, 5, 0.8), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
-		createDecor(origin + Vector3.new(x, 3, 3), Vector3.new(1.5, 5, 0.8), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
-		-- 火把
-		for _, z in ipairs({ -3, 3 }) do
-			local torch = createDecor(origin + Vector3.new(x, 5.5, z), Vector3.new(0.5, 0.5, 0.5), BrickColor.new("Bright orange"), Enum.PartType.Ball, Enum.Material.Neon)
-			local f = Instance.new("Fire")
-			f.Parent = torch
-			f.Size = 3
+	-- 拱形窗列
+	for x = -55, 55, 10 do
+		createDecor(origin + Vector3.new(x, 4, -8.5), Vector3.new(4, 4, 0.3), BrickColor.new("Really black"), Enum.PartType.Cylinder, Enum.Material.SmoothPlastic).Transparency = 0.3
+		createDecor(origin + Vector3.new(x, 2.5, -8.5), Vector3.new(0.6, 0.6, 0.3), BrickColor.new("Bright orange"), Enum.PartType.Ball, Enum.Material.Neon).Transparency = 0.2
+	end
+	-- 城垛
+	for x = -58, 58, 4 do
+		createDecor(origin + Vector3.new(x, 11.5, -9), Vector3.new(2, 1.5, 0.8), BrickColor.new("Dark stone"), nil, Enum.Material.Slate)
+	end
+	-- 后墙间隔立柱
+	for x = -50, 50, 15 do
+		if math.abs(x) > 5 then
+			createDecor(origin + Vector3.new(x, 4, -9), Vector3.new(1, 8, 1), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
 		end
 	end
 
+	-- ============================================================
+	-- 后侧阶梯看台（z=-7，背景墙前方）
+	-- ============================================================
+	for step = 0, 2 do
+		createDecor(origin + Vector3.new(-35, 0.3 + step * 0.6, -7 + step * 0.6), Vector3.new(60, 0.5, 0.8), BrickColor.new("Dark grey"), nil, Enum.Material.SmoothPlastic)
+	end
+	for x = -40, 40, 10 do
+		createDecor(origin + Vector3.new(x, 1.5, -7), Vector3.new(0.5, 3.5, 0.6), BrickColor.new("Dark stone"), nil, Enum.Material.Slate)
+	end
+
+	-- ============================================================
+	-- 前侧低围栏（z=4，仅 2 格高，不挡 2D 视线）
+	-- ============================================================
+	createDecor(origin + Vector3.new(0, 1, 4), Vector3.new(120, 2, 0.5), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+	-- 前侧细柱（像御膳房一样，不挡视线）
+	for x = -55, 55, 10 do
+		createDecor(origin + Vector3.new(x, 1.5, 4), Vector3.new(0.5, 3, 0.5), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+	end
+
+	-- ============================================================
+	-- 左侧入口大门（玩家走入，z=0）
+	-- ============================================================
+	createDecor(origin + Vector3.new(-56, 5, 0), Vector3.new(1.5, 10, 1.5), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+	createDecor(origin + Vector3.new(-52, 5, 0), Vector3.new(1.5, 10, 1.5), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+	createDecor(origin + Vector3.new(-54, 10, 0), Vector3.new(5, 0.8, 2), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+	createDecor(origin + Vector3.new(-54, 11, 0), Vector3.new(6, 0.5, 1.6), BrickColor.new("Dark stone"), nil, Enum.Material.Slate)
+	local gateTorch = createDecor(origin + Vector3.new(-54, 8.5, 0), Vector3.new(0.5, 0.5, 0.5), BrickColor.new("Bright orange"), Enum.PartType.Ball, Enum.Material.Neon)
+	local gFire = Instance.new("Fire")
+	gFire.Parent = gateTorch; gFire.Size = 5; gFire.Heat = 15
+
+	-- ============================================================
+	-- 右侧铁门（妖兽冲出，z=0）
+	-- ============================================================
+	createDecor(origin + Vector3.new(52, 5, 0), Vector3.new(1.5, 10, 1.5), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+	createDecor(origin + Vector3.new(56, 5, 0), Vector3.new(1.5, 10, 1.5), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+	createDecor(origin + Vector3.new(54, 10, 0), Vector3.new(5, 0.8, 2), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+	-- 铁栅栏竖条
+	for xOff = -1.5, 1.5, 0.3 do
+		createDecor(origin + Vector3.new(54 + xOff, 4.5, 0), Vector3.new(0.08, 8, 0.08), BrickColor.new("Dark grey"), nil, Enum.Material.Neon)
+	end
+	for yOff = 1, 7, 2 do
+		createDecor(origin + Vector3.new(54, yOff, 0), Vector3.new(3, 0.08, 0.08), BrickColor.new("Dark grey"), nil, Enum.Material.Neon)
+	end
+	local monsterTorch = createDecor(origin + Vector3.new(54, 8.5, 0), Vector3.new(0.5, 0.5, 0.5), BrickColor.new("Bright orange"), Enum.PartType.Ball, Enum.Material.Neon)
+	local mFire = Instance.new("Fire")
+	mFire.Parent = monsterTorch; mFire.Size = 6; mFire.Heat = 18
+
+	-- ============================================================
+	-- 四角瞭望塔（只有后侧 z=-9，前侧不建以免挡视线）
+	-- ============================================================
+	local backCorners = { { -60, -9 }, { 60, -9 } }
+	for _, cp in ipairs(backCorners) do
+		createDecor(origin + Vector3.new(cp[1], 4, cp[2]), Vector3.new(2.5, 8, 2.5), BrickColor.new("Dark stone"), nil, Enum.Material.Slate)
+		createDecor(origin + Vector3.new(cp[1], 8.5, cp[2]), Vector3.new(3, 1, 3), BrickColor.new("Dark grey"), nil, Enum.Material.Slate)
+		local torch = createDecor(origin + Vector3.new(cp[1], 9.5, cp[2]), Vector3.new(1, 1, 1), BrickColor.new("Bright orange"), Enum.PartType.Ball, Enum.Material.Neon)
+		local f = Instance.new("Fire")
+		f.Parent = torch; f.Size = 8; f.Heat = 20
+	end
+
+	-- ============================================================
+	-- 边缘防掉落碰撞墙（不可见）
+	-- ============================================================
+	local leftEdge = Instance.new("Part")
+	leftEdge.Name = "BeastEdgeWall"
+	leftEdge.Size = Vector3.new(0.5, 8, 16)
+	leftEdge.Position = origin + Vector3.new(-64, 4, 0)
+	leftEdge.Anchored = true; leftEdge.CanCollide = true; leftEdge.Transparency = 1
+	leftEdge.Parent = workspace
+
+	local rightEdge = Instance.new("Part")
+	rightEdge.Name = "BeastEdgeWall"
+	rightEdge.Size = Vector3.new(0.5, 8, 16)
+	rightEdge.Position = origin + Vector3.new(64, 4, 0)
+	rightEdge.Anchored = true; rightEdge.CanCollide = true; rightEdge.Transparency = 1
+	rightEdge.Parent = workspace
+
+	-- ============================================================
 	-- 妖兽生成台（交互区域，Z=0）
+	-- ============================================================
 	createArea({
 		Name = "BeastSpawn",
 		Position = origin + Vector3.new(0, 0.5, 0),
 		Size = Vector3.new(6, 0.5, 6),
 		Color = BrickColor.new("Really red"),
 		Transparency = 0.3,
-		Label = "妖兽战场",
+		Label = "⚔ 角斗场中央",
 	})
 
-	print("🐉 妖兽战场已就绪（生成台: x=0）")
+	-- ============================================================
+	-- 场景引导提示
+	-- ============================================================
+	createHintBoard(origin + Vector3.new(0, 6, 0),
+		"踏入角斗场红区 → 妖兽从右侧铁门冲出",
+		BrickColor.new("Really red"))
+	createHintBoard(origin + Vector3.new(-28, 5, 0),
+		"走向妖兽触发三次碰撞冲击定胜负",
+		BrickColor.new("Bright blue"))
+	createHintBoard(origin + Vector3.new(28, 5, 0),
+		"仙力越强胜率越高 | 小心妖兽突袭",
+		BrickColor.new("Bright green"))
+
+	print("🏟️ 角斗场已就绪（140x12 沙地 + 12高背景墙 + 前低围栏 + 拱廊看台）")
 end
 
 -- ============================================================

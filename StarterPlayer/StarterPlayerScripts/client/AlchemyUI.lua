@@ -74,9 +74,9 @@ function AlchemyUI:ShowFire(step)
 	fireLabel.TextSize = 28
 	fireLabel.Parent = panel
 
-	-- 进度文字
-	local stepColors = { nil, COLORS.Fire1, COLORS.Fire2, COLORS.Fire3 }
-	local stepLabels = { "", "添柴 1/3", "添柴 2/3", "🔥 添柴 3/3" }
+	-- 进度文字（step = 1/2/3）
+	local stepColors = { [1] = COLORS.Fire1, [2] = COLORS.Fire2, [3] = COLORS.Fire3 }
+	local stepLabels = { [1] = "添柴 1/3", [2] = "添柴 2/3", [3] = "🔥 添柴 3/3" }
 
 	local textLabel = Instance.new("TextLabel")
 	textLabel.Size = UDim2.new(1, -20, 0, 30)

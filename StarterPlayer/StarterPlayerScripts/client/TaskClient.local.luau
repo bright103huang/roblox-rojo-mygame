@@ -72,6 +72,42 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 		return
 	end
 
+	-- 药材入炉事件（由 AlchemyTask 触发）
+	if result == "AlchemyHerbAccepted" then
+		getState("Alchemy").carrying = false
+		-- 播放简短提示：药材已入炉
+		local playerGui = player:WaitForChild("PlayerGui")
+		local msg = Instance.new("ScreenGui")
+		msg.Name = "AlchemyHerbMsg"
+		msg.ResetOnSpawn = false
+		msg.Parent = playerGui
+
+		local bg = Instance.new("Frame")
+		bg.Size = UDim2.new(0, 200, 0, 40)
+		bg.Position = UDim2.new(0.5, -100, 0.7, 0)
+		bg.BackgroundColor3 = Color3.fromRGB(30, 60, 30)
+		bg.BackgroundTransparency = 0.15
+		bg.BorderSizePixel = 0
+		bg.Parent = msg
+		local bgCorner = Instance.new("UICorner")
+		bgCorner.CornerRadius = UDim.new(0, 8)
+		bgCorner.Parent = bg
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = "🌿 药材已入炉，去取柴火吧！"
+		label.TextColor3 = Color3.fromRGB(144, 238, 144)
+		label.TextSize = 14
+		label.Font = Enum.Font.SourceSansBold
+		label.Parent = bg
+
+		task.delay(2, function()
+			msg:Destroy()
+		end)
+		return
+	end
+
 	-- 添柴进度事件（由 AlchemyTask 触发）
 	if result == "AlchemyFuel" then
 		local alchemyUI = require(script.Parent.AlchemyUI)
@@ -158,6 +194,97 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 				tutorialGui:Destroy()
 			end
 		end)
+		return
+	end
+
+	-- 妖兽角斗场新手引导
+	if result == "BeastTutorial" then
+		local playerGui = player:WaitForChild("PlayerGui")
+		local tutorialGui = Instance.new("ScreenGui")
+		tutorialGui.Name = "BeastTutorialPopup"
+		tutorialGui.DisplayOrder = 100
+		tutorialGui.Parent = playerGui
+
+		local bg = Instance.new("Frame")
+		bg.Size = UDim2.new(0, 350, 0, 160)
+		bg.Position = UDim2.new(0.5, -175, 0.5, -80)
+		bg.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+		bg.BackgroundTransparency = 0.2
+		bg.BorderSizePixel = 0
+		bg.Parent = tutorialGui
+		local bgCorner = Instance.new("UICorner")
+		bgCorner.CornerRadius = UDim.new(0, 12)
+		bgCorner.Parent = bg
+
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, -20, 0, 30)
+		title.Position = UDim2.new(0, 10, 0, 8)
+		title.BackgroundTransparency = 1
+		title.Text = "🐉 妖兽角斗场"
+		title.TextColor3 = Color3.fromRGB(255, 200, 80)
+		title.TextSize = 18
+		title.Font = Enum.Font.SourceSansBold
+		title.Parent = bg
+
+		local msg = Instance.new("TextLabel")
+		msg.Size = UDim2.new(1, -20, 0, 80)
+		msg.Position = UDim2.new(0, 10, 0, 40)
+		msg.BackgroundTransparency = 1
+		msg.Text = tostring(extraData and extraData.Message or "踏入角斗场大战妖兽！")
+		msg.TextColor3 = Color3.new(1, 1, 1)
+		msg.TextSize = 14
+		msg.Font = Enum.Font.SourceSans
+		msg.TextWrapped = true
+		msg.TextXAlignment = Enum.TextXAlignment.Left
+		msg.TextYAlignment = Enum.TextYAlignment.Top
+		msg.Parent = bg
+
+		local closeBtn = Instance.new("TextButton")
+		closeBtn.Size = UDim2.new(0, 120, 0, 30)
+		closeBtn.Position = UDim2.new(0.5, -60, 1, -40)
+		closeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+		closeBtn.BorderSizePixel = 0
+		closeBtn.Text = "知道了"
+		closeBtn.TextColor3 = Color3.new(1, 1, 1)
+		closeBtn.TextSize = 14
+		closeBtn.Font = Enum.Font.SourceSansBold
+		closeBtn.Parent = bg
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 6)
+		btnCorner.Parent = closeBtn
+
+		closeBtn.MouseButton1Click:Connect(function()
+			tutorialGui:Destroy()
+		end)
+
+		task.delay(8, function()
+			if tutorialGui and tutorialGui.Parent then
+				tutorialGui:Destroy()
+			end
+		end)
+		return
+	end
+
+	-- 妖兽角斗场战斗事件
+	if result == "BeastFightStart" then
+		print("🏟️ 角斗场战斗开始！妖兽: " .. tostring(extraData and extraData.AnimalName))
+		return
+	end
+
+	if result == "BeastCollision" then
+		print("💥 第 " .. tostring(extraData and extraData.Round) .. " 轮碰撞！")
+		return
+	end
+
+	if result == "BeastVictory" then
+		getState("Beast").carrying = false
+		print("⚔️ " .. tostring(extraData and extraData.Message or "击败妖兽！"))
+		return
+	end
+
+	if result == "BeastLost" then
+		getState("Beast").carrying = false
+		print("💥 " .. tostring(extraData and extraData.Message or "妖兽太强！"))
 		return
 	end
 
