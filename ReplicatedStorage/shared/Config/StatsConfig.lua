@@ -61,11 +61,10 @@ local StatsConfig = {
 			Display = "体力-8  疲劳+5  身法exp+5  仙晶+10",
 		},
 		Alchemy = {
-			ActionCost = { Spirit = 10 },
-			ApplyCost = { Spirit = -10, FirePoison = 3, Fatigue = 3, AlchemyExp = 8, XianJing = 15 },
-			CraftCost = { Spirit = -20 },
-			FailureCost = { Spirit = -20, Fatigue = 20 },
-			Display = "精神-10  火毒+3  火候exp+8  仙晶+15",
+			ActionCost = { Spirit = 5 },    -- 每次动作最低精神门槛
+			ApplyCost = { AlchemyExp = 8, XianJing = 15, FirePoison = 3 },  -- 成丹奖励
+			FailureCost = { Spirit = -15, Fatigue = 20 },   -- 炸炉惩罚
+			Display = "精神-29/轮  火候exp+8  仙晶+15",
 		},
 		Beast = {
 			ActionCost = { Stamina = 12 },

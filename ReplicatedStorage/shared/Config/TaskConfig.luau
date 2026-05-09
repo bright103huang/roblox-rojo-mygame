@@ -61,8 +61,8 @@ local TaskConfig = {
 			HandlerModule = "Tasks.AlchemyTask",
 			InteractionAreas = {
 				Pickup = {
-					PartName = "IngredientTable",
-					FireAction = "Pick",
+					{ PartName = "HerbStation", FireAction = "Pick" },
+					{ PartName = "Woodpile", FireAction = "Pick" },
 				},
 				Drop = {
 					PartName = "Furnace",

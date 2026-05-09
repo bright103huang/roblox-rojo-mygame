@@ -399,23 +399,47 @@ Malice 戾气             资源: XianJing 仙晶, GongDe 功德
 | 清毒散 | 草药+火晶 | 50% | FirePoison -15 |
 | 聚神丹 | 灵芝+仙露 | 30% | Spirit +15 |
 
+### 新交互流程（B+方案）
+
+```
+材料台 → 取药材 (carrying=herb)
+柴火堆 → 取柴火 (carrying=firewood)  
+丹炉 → 添柴 (1/3)，炉火微亮
+柴火堆 → 取柴火
+丹炉 → 添柴 (2/3)，炉火更旺
+柴火堆 → 取柴火
+丹炉 → 添柴 (3/3)，炉火最旺 → Roll 出结果
+  ├ 成功：光球飞入葫芦，获得仙晶+火候经验
+  └ 炸炉：黑烟特效，疲劳大增
+```
+
+### 分步消耗
+
+| 动作 | Spirit | Fatigue |
+|------|--------|---------|
+| 取药材 | -5 | +1 |
+| 取柴火（每次） | -3 | +1 |
+| 添柴（每次） | -5 | +2 |
+| **一轮满炼总计** | **-29** | **+10** |
+
 ### 成功率公式
+
 ```
-最终成功率 = 基础成功率 + AlchemyLv × 5% - (FirePoison > 60 ? 30% : 0)
-clamp 到 [0.1, 0.95]
+成丹率 = 50% + AlchemyLv × 4% + 添柴次数 × 12% - (FirePoison > 60 时 -20%)
+clamp 到 [10%, 95%]
 ```
 
-### 交互流程
-1. 触摸 IngredientTable（捡起药材，carrying=true）
-2. 触摸 Furnace（打开 UI，服务端返回 OpenAlchemyUI）
-3. 选择 2 种药材 → 点击"开始炼制"
-4. FireServer("Craft:Alchemy") → 服务端计算
-5. 结果：CraftSuccess / CraftFailed
+添柴次数 = 0~3（每添一次 +12%，跑满3趟 +36%）。
 
-### 特殊机制
-- **虚不受补**：Fatigue>80 + FirePoison>60 时 50% 服药失败（炸炉效果）
-- **配方不匹配**：消耗药材但不消耗精神（无效配方提示）
-- **精神不足**：达不到配方 SpiritReq 则失败
+### 设计意图（数值依据）
+
+| 阶段 | 行为 | 意图 |
+|------|------|------|
+| Lv1-3 | 跑满3趟 ≈ 90%成功率 | 新手友好，建立正反馈 |
+| Lv4-7 | 可少跑1-2趟柴火，效率优先 | 火候够了给玩家灵活选择 |
+| Lv8+ | 直接添柴1次也稳 | 后期节约时间做其他事 |
+| FirePoison>60 | -20%硬惩罚 | 驱毒（清毒散/冥想）成为有意义决策 |
+| 每日上限 | 约4-5轮满炼（Spirit 100→0） | 配合自动恢复，刚好跑完休息或切换场景 |
 
 ---
 
@@ -538,7 +562,7 @@ end
 | SceneConfig | `ReplicatedStorage.Shared.Config.SceneConfig` |
 | DataManager | `ServerScriptService.Server.Systems.DataManager` |
 | StatusService | `ServerScriptService.Server.Systems.StatusService` |
-| TimeService | `ServerScriptService.Server.Systems.TimeService.server` |
+| TimeService | `ServerScriptService.Server.Systems.TimeService` |
 | TaskService | `ServerScriptService.Server.Systems.TaskService.server` |
 | SceneGateService | `ServerScriptService.Server.Systems.SceneGateService` |
 | SceneSetup | `ServerScriptService.Server.Systems.SceneSetup.server` |

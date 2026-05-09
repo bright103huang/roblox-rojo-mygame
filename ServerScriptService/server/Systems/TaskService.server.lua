@@ -233,7 +233,7 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			end
 		end
 
-		local ok = handler.OnPlayerPickup(player, nil)
+		local ok = handler.OnPlayerPickup(player, contextData)
 		if ok then
 			TaskEvent:FireClient(player, "PickSuccess:" .. taskName)
 		else
@@ -259,6 +259,10 @@ TaskEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			TaskEvent:FireClient(player, "DropFailed:" .. taskName)
 		elseif result == "OpenUI" then
 			-- UI 已在 OnPlayerDrop 中触发
+		elseif result == "FuelAdded" or result == "CraftDone" then
+			-- 由 AlchemyTask 自行通知客户端
+		elseif result == "WrongIngredient" or result == "MaxAttempts" then
+			TaskEvent:FireClient(player, "DropFailed:" .. taskName)
 		else
 			TaskEvent:FireClient(player, "DropFailed:" .. taskName)
 		end

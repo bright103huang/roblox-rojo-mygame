@@ -272,55 +272,85 @@ local function setupAlchemyScene()
 	local glowFloor = createDecor(origin + Vector3.new(0, 0, 0), Vector3.new(3, 0.1, 3), BrickColor.new("Bright orange"), nil, Enum.Material.Neon)
 	glowFloor.Transparency = 0.5
 
-	-- 药材台（交互区域，Z=0，在炼丹炉右侧）
+	-- 灵草台（交互区域，Z=0，在丹炉左侧）
 	createArea({
-		Name = "IngredientTable",
-		Position = origin + Vector3.new(15, 0.5, 0),
-		Size = Vector3.new(5, 0.8, 4),
+		Name = "HerbStation",
+		Position = origin + Vector3.new(-10, 0.5, 0),
+		Size = Vector3.new(4, 0.8, 4),
 		Color = BrickColor.new("Bright green"),
 		Transparency = 0.2,
-		Label = "药材台",
+		Label = "灵草台",
 	})
 
-	-- 药材架（z=±3 装饰层）
-	createDecor(origin + Vector3.new(16, 1.5, -3), Vector3.new(0.5, 1.5, 0.5), BrickColor.new("Dark brown"))
-	createDecor(origin + Vector3.new(16, 1.5, 3), Vector3.new(0.5, 1.5, 0.5), BrickColor.new("Dark brown"))
-	createDecor(origin + Vector3.new(16, 2.5, 0), Vector3.new(5, 0.2, 3), BrickColor.new("Dark brown"))
+	-- 柴火堆（交互区域，Z=0，在丹炉右侧）
+	createArea({
+		Name = "Woodpile",
+		Position = origin + Vector3.new(10, 0.5, 0),
+		Size = Vector3.new(4, 0.8, 4),
+		Color = BrickColor.new("Bright orange"),
+		Transparency = 0.2,
+		Label = "柴火堆",
+	})
+
+	-- 灵草台装饰
+	createDecor(origin + Vector3.new(-10, 1.5, -3), Vector3.new(0.5, 1.5, 0.5), BrickColor.new("Dark brown"))
+	createDecor(origin + Vector3.new(-10, 1.5, 3), Vector3.new(0.5, 1.5, 0.5), BrickColor.new("Dark brown"))
+
+	-- 柴火堆装饰
+	createDecor(origin + Vector3.new(10, 1, -3), Vector3.new(3, 0.5, 0.5), BrickColor.new("Dark brown"))
+	createDecor(origin + Vector3.new(10, 1, 3), Vector3.new(3, 0.5, 0.5), BrickColor.new("Dark brown"))
+	for i = 1, 5 do
+		local log = createDecor(origin + Vector3.new(8 + i * 0.8, 0.5, 0), Vector3.new(1.2, 0.4, 0.4), BrickColor.new("Dark brown"), Enum.PartType.Cylinder)
+	end
 
 	-- ============================================================
 	-- 场景引导提示
 	-- ============================================================
 
-	-- Step 1: 药材台提示
+	-- 灵草台提示
 	createHintBoard(
-		origin + Vector3.new(15, 4, 0),
-		"Step 1: 触摸药材台\n捡起 2 种药材",
+		origin + Vector3.new(-10, 4, 0),
+		"① 取药材",
 		BrickColor.new("Bright green")
 	)
 
-	-- Step 2: 炼丹炉提示
+	-- 柴火堆提示
 	createHintBoard(
-		origin + Vector3.new(0, 6, 0),
-		"Step 2: 触摸丹炉\n打开炼丹面板",
+		origin + Vector3.new(10, 4, 0),
+		"② 取柴火",
 		BrickColor.new("Bright orange")
 	)
 
-	-- 丹方提示（放在药材台和丹炉之间）
+	-- 丹炉提示
 	createHintBoard(
-		origin + Vector3.new(8, 3, 0),
-		"丹方:\n草药+清水 = 回气丹\n草药+火晶 = 清毒散\n灵芝+仙露 = 聚神丹",
+		origin + Vector3.new(0, 6, 0),
+		"③ 添柴 ×3 → 成丹",
+		BrickColor.new("Bright orange")
+	)
+
+	-- 流程指示
+	createHintBoard(
+		origin + Vector3.new(-5, 2.5, 0),
+		"← 灵草  丹炉 →\n柴火堆",
 		BrickColor.new("Bright yellow")
 	)
 
 	-- ============================================================
-	-- 药材名称标签
+	-- 药材名称标签（装饰用）
 	-- ============================================================
 	local ingredientNames = { "草药", "清水", "灵芝", "仙露", "火晶" }
+	local labelColors = {
+		Color3.new(0.6, 1, 0.6),
+		Color3.new(0.6, 0.8, 1),
+		Color3.new(1, 0.8, 0.6),
+		Color3.new(1, 0.6, 1),
+		Color3.new(1, 0.5, 0.3),
+	}
 	for i, name in ipairs(ingredientNames) do
 		local labelPart = Instance.new("Part")
 		labelPart.Name = "IngredientLabel_" .. name
 		labelPart.Size = Vector3.new(0.5, 0.1, 0.5)
-		labelPart.Position = origin + Vector3.new(13 + (i - 1) * 2.5, 1.8, 0)
+		labelPart.Position = origin + Vector3.new(-16 + (i - 1) * 1.8, 3.5, 0)
 		labelPart.Anchored = true
 		labelPart.CanCollide = false
 		labelPart.Transparency = 1
@@ -329,7 +359,7 @@ local function setupAlchemyScene()
 		local bb = Instance.new("BillboardGui")
 		bb.Parent = labelPart
 		bb.Adornee = labelPart
-		bb.Size = UDim2.new(0, 80, 0, 30)
+		bb.Size = UDim2.new(0, 60, 0, 24)
 		bb.AlwaysOnTop = true
 		bb.MaxDistance = 200
 
@@ -338,14 +368,14 @@ local function setupAlchemyScene()
 		label.Size = UDim2.new(1, 0, 1, 0)
 		label.BackgroundTransparency = 1
 		label.Text = name
-		label.TextColor3 = Color3.new(0.8, 1, 0.8)
+		label.TextColor3 = labelColors[i]
 		label.TextStrokeTransparency = 0
 		label.TextStrokeColor3 = Color3.new(0, 0, 0)
-		label.TextSize = 16
-		label.Font = Enum.Font.SourceSansBold
+		label.TextSize = 14
+		label.Font = Enum.Font.SourceSans
 	end
 
-	print("⚗️ 炼丹洞天已就绪（炼丹炉: x=0, 药材台: x=15）")
+	print("⚗️ 炼丹洞天已就绪（丹炉: x=0, 灵草台: x=-10, 柴火堆: x=10）")
 end
 
 -- ============================================================

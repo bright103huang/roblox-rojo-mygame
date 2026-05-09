@@ -72,6 +72,26 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 		return
 	end
 
+	-- 添柴进度事件（由 AlchemyTask 触发）
+	if result == "AlchemyFuel" then
+		local alchemyUI = require(script.Parent.AlchemyUI)
+		alchemyUI:ShowFire(extraData and extraData.Step or 1)
+		-- 重置 carrying 允许继续取柴（服务端已清空 carrying）
+		getState("Alchemy").carrying = false
+		return
+	end
+
+	-- 炼丹结算事件（由 AlchemyTask 触发，替代旧的 Craft 流程）
+	if result == "AlchemyCraft" then
+		local alchemyUI = require(script.Parent.AlchemyUI)
+		alchemyUI:ShowResult(extraData and extraData.Success, extraData)
+		-- 重置本地 carrying 状态
+		for _, state in pairs(playerState) do
+			state.carrying = false
+		end
+		return
+	end
+
 	-- 特殊事件：新手引导（不含冒号格式）
 	if result == "AlchemyTutorial" then
 		local playerGui = player:WaitForChild("PlayerGui")
@@ -184,25 +204,6 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 	elseif resultType == "SpeedUp" then
 		print("⚡ 速度升级！当前额外速度：" .. tostring(result))
 
-	elseif resultType == "OpenAlchemyUI" then
-		-- 打开炼丹 UI（result 包含药材和配方数据）
-		local alchemyUI = require(script.Parent.AlchemyUI)
-		alchemyUI:Open(result)
-		-- 炼丹 UI 打开后，carrying 保持 true，防止重复触发
-		-- 炼制完成或关闭 UI 后，服务端会重置 carrying
-
-	elseif resultType == "CraftSuccess" then
-		-- 炼丹成功
-		local alchemyUI = require(script.Parent.AlchemyUI)
-		alchemyUI:ShowResult(true, result)
-		state.carrying = false
-
-	elseif resultType == "CraftFailed" then
-		-- 炼丹失败
-		local alchemyUI = require(script.Parent.AlchemyUI)
-		alchemyUI:ShowResult(false, result)
-		state.carrying = false
-
 	elseif resultType == "LevelUp" then
 		-- 属性升级（由 StatusService 触发）
 		print("⬆ " .. taskName .. " 升级至 Lv." .. tostring(result))
@@ -278,11 +279,15 @@ for taskName, taskCfg in pairs(TaskConfig.Tasks or {}) do
 	local areas = taskCfg.InteractionAreas
 	if areas then
 		if areas.Pickup then
-			partMap[areas.Pickup.PartName] = {
-				TaskName = taskName,
-				ActionType = areas.Pickup.FireAction or "Pick",
-				AreaCfg = areas.Pickup,
-			}
+			-- 支持数组格式（多个同任务Pickup区域）和单表格式
+			local pickupList = areas.Pickup.PartName and { areas.Pickup } or areas.Pickup
+			for _, entry in ipairs(pickupList) do
+				partMap[entry.PartName] = {
+					TaskName = taskName,
+					ActionType = entry.FireAction or "Pick",
+					AreaCfg = entry,
+				}
+			end
 		end
 		if areas.Drop then
 			-- 使用 FireAction 作为 ActionType，支持 "Attack" 等自定义动作
@@ -314,16 +319,15 @@ local function bind(part)
 		if not player.Character then return end
 		if hit.Parent ~= player.Character then return end
 		if state.debounce then return end
-
 		state.debounce = true
 
-		if mapping.ActionType == "Pick" and not state.carrying then
+		if mapping.ActionType == "Pick" and (not state.carrying or mapping.TaskName == "Alchemy") then
 			state.carrying = true
 			print("🎯 拿起：" .. mapping.TaskName)
 			TaskEvent:FireServer(
 				"Pick:" .. mapping.TaskName,
 				nil,
-				nil
+				{ PartName = part.Name }
 			)
 
 		elseif mapping.ActionType == "Drop" and state.carrying then

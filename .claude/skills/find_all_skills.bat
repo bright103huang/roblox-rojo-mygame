@@ -1,0 +1,4 @@
+@echo off
+echo [Local Skills Detector] ?????????...
+dir /b "C:\Users\lenovo\Desktop\MyGame\.claude\skills"
+echo [End] ?????

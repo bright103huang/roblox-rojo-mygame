@@ -21,16 +21,13 @@
   │
   ▼
 我（总接口）
-  │  分析需求 → 判断需要哪些仙官司 → 按顺序/并行调度
+  │  ① 先调 skills（查已有→find-skills→加载）
+  │  ② 判断范围，调度子代理
   │
-  ├─▶ 灵感司 — 需求挖掘与方案设计（需要时）
-  ├─▶ 营造司 — 架构设计与规划
-  ├─▶ 数据司 — Config 配置 + 数据字段
-  ├─▶ 任务司 — 任务逻辑实现（Task Handler）
-  ├─▶ 界面司 — 客户端 UI 实现
+  ├─▶ 灵感司 — 大型新功能需求设计（需要时）
+  ├─▶ 执行司 — 一次性完成 Config+服务端+客户端改动
   ├─▶ 查察司 — 代码审查与一致性检查
-  ├─▶ 诊察司 — Bug 定位与修复（需要时）
-  └─▶ 督工司 — 大型功能时统筹全局调度
+  └─▶ 诊察司 — Bug 定位与修复（需要时）
   │
   ▼
 你: 收到可用成果
@@ -47,75 +44,60 @@
 
 ## 仙官司体系（AI 子代理）
 
-### 八司分工总览
+### 四司精简架构
 
-| 仙官司 | Agent ID | 阶段 | 职责 |
-|--------|----------|------|------|
-| 灵感司 | `inspiration` | 需求 | 需求挖掘、方案探讨、输出设计文档 |
-| 营造司 | `architect` | 设计 | 游戏架构设计、全局规划、技术决策 |
-| 数据司 | `data-steward` | 数据 | Config 配置表、DataManager 数据层、数值平衡 |
-| 任务司 | `task-craftsman` | 任务 | 按 Task Handler 模式创建任务逻辑 |
-| 界面司 | `ui-artisan` | 界面 | 创建和修改客户端 UI，纯 Luau |
-| 查察司 | `qa-inspector` | 审查 | 代码审查、架构一致性、质量把关 |
-| 诊察司 | `diagnostician` | 调试 | 系统化 Bug 定位、根因分析、四阶段修复 |
-| 督工司 | `overseer` | 统筹 | 大型功能时拆解任务、派发子代理、跟踪验收 |
+| 仙官司 | Agent ID | 触发条件 | 职责 |
+|--------|----------|---------|------|
+| 灵感司 | `inspiration` | 大型新功能 | 需求探讨、方案设计、输出设计文档 |
+| 执行司 | `executor` | 日常功能开发 | 一次性完成 Config + 服务端逻辑 + 客户端 UI |
+| 查察司 | `qa-inspector` | 每次改动后 | 代码审查、架构一致性、质量把关 |
+| 诊察司 | `diagnostician` | Bug 修复 | 系统化定位、根因分析、修复验证 |
 
-### 各司详细职责
+### 我做主（不派子代理）
 
-**灵感司** — 动工前的第一步
+以下工作我直接做，不需要子代理 handoff：
+
+- **日常改 Config**（StatsConfig、TaskConfig 等微调）
+- **修简单 Bug**（单文件、逻辑明确的）
+- **架构决策**（项目方向、模块划分）
+- **审阅设计文档**（灵感司产出我来审核）
+- **git 提交**（版本管理）
+
+### 各司职责
+
+**灵感司** — 动工前的第一步（调 `brainstorming` skill）
 - 与你探讨需求，一次只问一个问题
 - 提出 2-3 种方案并推荐
-- 输出设计文档并存档到 `docs/designs/`
+- 输出设计文档到 `docs/designs/`
 - 不写代码，只出方案
+- 终点：设计文档获批
 
-**营造司** — 方案落地
-- 将设计文档转化为技术方案
-- 定义数据流、组件交互、文件结构
-- 制定实施计划（分阶段、分文件）
-- 不写实现代码
+**执行司** — 合并原数据/任务/界面三司（调 `roblox-game-development` skill）
+- 改 Config：StatsConfig、TaskConfig、EconomyConfig、DataManager 字段
+- 写服务端：Task Handler 处理器（OnPlayerPickup/Drop/Craft/Attack）
+- 写客户端：纯 Luau UI（Instance.new，无 Roact）
+- 一次性完成，不拆分 handoff
+- 注意文件后缀规则：`.local.lua` / `.lua` / `.server.lua`
 
-**数据司** — 数据基础
-- StatsConfig/TaskConfig/SceneConfig 等配置表维护
-- DataManager 新字段添加
-- 数值平衡设计
-- Attribute 同步规则定义
+**查察司** — 质量门（调 `roblox-game-development` + `systematic-debugging` skill）
+- 文件后缀与 RunContext 检查
+- `.` vs `:` 调用约定检查
+- 跨文件引用一致性（RewardType、HandlerModule 路径等）
+- DataManager 字段完整性
+- 循环依赖检查
 
-**任务司** — 玩法逻辑
-- 按 Task Handler 模式实现任务处理器
-- OnPlayerPickup/OnPlayerDrop/OnCraft/OnAttack 接口实现
-- 通过 `StatusService:GetTaskCosts()` 读取统一数值
-
-**界面司** — 客户端 UI
-- 纯 Luau 实现，无 Roact
-- 使用 `.local.lua`（独立运行）或 `.lua`（被 require）后缀
-- 事件驱动：TaskEvent:FireClient + Attributes 同步
-- SSS 延迟同步兼容：用 `FindFirstChild` 查找模块
-
-**查察司** — 质量门
-- 架构一致性检查：与现有模式是否兼容？
-- 常见坑扫描：文件后缀、Attribute 同步、循环依赖
-- 边界情况验证：玩家离开、数据为空、并发操作
-
-**诊察司** — Bug 猎人
+**诊察司** — Bug 猎人（调 `systematic-debugging` + `roblox-game-development` skill）
 - 四阶段工作法：根因调查 → 模式分析 → 假设验证 → 修复
 - 不找到根因不准提修复方案
 - 连续 3 次假设失败 → 重新审视架构
-- 修复后必须在当次会话中新鲜验证
 
-**督工司** — 大型工程指挥
-- 从计划文件中读取任务列表
-- 按依赖关系串行或并行派发给对应仙官司
-- 每步验收：规格符合性 + 代码质量
-- 全部完成后汇总通知
-
-### 标准调度顺序
+### 标准调度流程
 
 ```
-小型功能: 我直接判断 → 调1-2个司 → 完成
-中型功能: 营造司设计 → 数据司定Config → 任务司+界面司并行 → 查察司审查
-大型功能: 灵感司需求 → 营造司设计 → 督工司统筹 → 各司按序实施 → 查察司终审
-Bug修复:  诊察司定位 → 数据司/任务司/界面司修复 → 诊察司验证
-数值调整: 数据司改Config → 查察司核对一致性
+日常小改动: 我直接改 → 查察司审查
+中型功能:   执行司实现 → 查察司审查
+大型功能:   灵感司设计 → 我审阅 → 执行司实现 → 查察司审查
+Bug修复:    诊察司定位 → 执行司修复（或我直接修）→ 诊察司验证
 ```
 
 ---
@@ -234,7 +216,7 @@ SceneChoiceUI.lua      → 场景选择面板（资源耗尽/升级/手动触发
 | `Systems/DataManager.lua` | 数据持久化层（DataStore + 内存回退） |
 | `Systems/StatusService.lua` | 状态引擎：恢复/验证/扣除/升级/红线检测 |
 | `Systems/SpeedCalculator.lua` | 动态速度计算：(16 + 身法×0.5) × 状态修正 |
-| `Systems/TimeService.server.lua` | 12 分钟时间循环，午夜疲劳结算 |
+| `Systems/TimeService.lua` | 12 分钟时间循环，午夜疲劳结算（ModuleScript，延时加载） |
 | `Systems/BeastNPC.lua` | 妖兽 NPC 生成和 AI |
 | `Systems/TaskService.server.lua` | 调度器：加载处理器、路由事件 |
 | `Systems/SceneSetup.server.lua` | 场景初始化：创建交互区域 + 主题装修（2D 横版） |
