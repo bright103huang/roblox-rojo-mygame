@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local StatusService = require(script.Parent.StatusService)
 local DataManager = require(script.Parent.DataManager)
 local Config = require(ReplicatedStorage.Shared.Config)
+local RiskConfig = require(ReplicatedStorage.Shared.Config.RiskConfig)
 
 -- ============================================================
 -- 妖兽属性配置
@@ -517,6 +518,7 @@ function BeastNPC:SettleFight(beastId)
 			Malice = 3 * mult,
 			CombatExp = 8 * mult,
 			XianJing = 20 * mult,
+			Risk = RiskConfig.Accumulation[beast.Tier] or RiskConfig.Accumulation.NormalKill,
 		})
 
 		if taskEvent then

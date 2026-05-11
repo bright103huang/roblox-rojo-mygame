@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(script.Parent.Parent.Systems.DataManager)
 local StatusService = require(script.Parent.Parent.Systems.StatusService)
 local BeastNPC = require(script.Parent.Parent.Systems.BeastNPC)
+local RiskConfig = require(ReplicatedStorage.Shared.Config.RiskConfig)
 
 -- ============================================================
 -- 防重复生成
@@ -51,6 +52,26 @@ function BeastTask.OnPlayerPickup(player, area)
 	local tier = "Normal"
 	if combat >= 10 then tier = "Boss"
 	elseif combat >= 5 then tier = "Elite" end
+	-- Risk 妖气侵蚀: 根据 Risk 概率提升妖兽等级
+	local riskTierRoll = math.random()
+	local risk = data and data.Risk or 10
+	-- 找到当前 Risk 对应的概率表
+	local spawnChances = { EliteChance = 0, BossChance = 0, RampageChance = 0 }
+	for threshold, chances in pairs(RiskConfig.SpawnModifiers) do
+		if risk >= threshold then
+			spawnChances = chances
+		end
+	end
+	-- Roll: 暴走 → Boss → Elite → Normal
+	if riskTierRoll < spawnChances.RampageChance then
+		tier = "Boss"
+	elseif riskTierRoll < spawnChances.RampageChance + spawnChances.BossChance then
+		tier = "Boss"
+	elseif riskTierRoll < spawnChances.RampageChance + spawnChances.BossChance + spawnChances.EliteChance then
+		if tier ~= "Boss" then
+			tier = "Elite"
+		end
+	end
 
 	pendingSpawn[player.UserId] = true
 	task.delay(1, function()
