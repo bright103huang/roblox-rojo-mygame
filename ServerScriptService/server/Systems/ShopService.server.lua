@@ -126,10 +126,23 @@ function ShopService:Purchase(player, itemKey)
 
 	elseif effectType == "CombatExp" then
 		StatusService:AddExp(player, "Combat", effectValue)
+
+	elseif effectType == "RandomStat" then
+		local stats = { "Agility", "AlchemyLv", "Combat" }
+		local chosen = stats[math.random(1, #stats)]
+		StatusService:AddExp(player, chosen, effectValue)
+		local nameMap = { Agility = "身法", AlchemyLv = "火候", Combat = "仙力" }
+		return "Success", "购买成功！" .. (nameMap[chosen] or chosen) .. " +1"
+
+	elseif effectType == "AllStats" then
+		StatusService:AddExp(player, "Agility", effectValue)
+		StatusService:AddExp(player, "AlchemyLv", effectValue)
+		StatusService:AddExp(player, "Combat", effectValue)
+		return "Success", "购买成功！全属性 +1"
 	end
 
-	print("🛒 " .. player.Name .. " 购买了 " .. item.Name)
-	return "Success", "购买成功！获得 " .. item.Name
+	print("🛒 " .. player.Name .. " 购买了 " .. (item.RealName or item.Name))
+	return "Success", "购买成功！获得 " .. (item.RealName or item.Name)
 end
 
 -- ============================================================
@@ -152,17 +165,47 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		-- 检查限购刷新
 		ShopService:CheckReset(player, data)
 
+		-- 朦胧机制：检查并更新已揭晓的丹药
+		if not data.RevealedShopItems then
+			data.RevealedShopItems = {}
+		end
+		local revealed = data.RevealedShopItems
+
 		-- 发送商品列表和已购数据到客户端
 		local items = {}
 		for key, cfg in pairs(DanConfig.Items) do
-			items[key] = {
-				Name = cfg.Name,
-				Description = cfg.Description,
-				Price = cfg.Price,
-				EffectType = cfg.EffectType,
-				EffectValue = cfg.EffectValue,
-				DailyLimit = cfg.DailyLimit,
-			}
+			local showReal = true
+			if cfg.RevealThreshold and cfg.RevealThreshold > 0 then
+				if not revealed[key] then
+					if (data.XianJing or 0) >= cfg.RevealThreshold then
+						revealed[key] = true
+						DataManager:UpdateField(player, "RevealedShopItems", revealed)
+					else
+						showReal = false
+					end
+				end
+			end
+
+			if showReal then
+				items[key] = {
+					Name = cfg.RealName or cfg.Name,
+					Description = cfg.RealDescription or cfg.Description,
+					Price = cfg.Price,
+					EffectType = cfg.EffectType,
+					EffectValue = cfg.EffectValue,
+					DailyLimit = cfg.DailyLimit,
+				}
+			else
+				items[key] = {
+					Name = cfg.Name,
+					Description = cfg.Description,
+					Price = cfg.Price,
+					EffectType = cfg.EffectType,
+					EffectValue = cfg.EffectValue,
+					DailyLimit = cfg.DailyLimit,
+					IsHidden = true,
+				}
+			end
 		end
 
 		ShopEvent:FireClient(player, "OpenShop", {

@@ -137,14 +137,14 @@ function ShopUI:CreateUI()
 	divider.BorderSizePixel = 0
 	divider.Parent = panel
 
-	-- 商品网格（3 列 x 2 行）
-	local gridStartX = 16
+	-- 商品网格（2 列 x 3 行）
+	local gridStartX = 24
 	local gridStartY = 92
-	local slotWidth = 116
+	local slotWidth = 170
 	local slotHeight = 150
 	local gapX = 12
 	local gapY = 12
-	local cols = 3
+	local cols = 2
 
 	local items = currentShopData.Items or {}
 	local purchases = currentShopData.DailyPurchases or {}
@@ -179,7 +179,7 @@ function ShopUI:CreateUI()
 		nameLabel.Position = UDim2.new(0, 2, 0, 4)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Text = item.Name
-		nameLabel.TextColor3 = COLORS.White
+		nameLabel.TextColor3 = item.IsHidden and COLORS.DarkGray or COLORS.White
 		nameLabel.TextSize = 16
 		nameLabel.Font = Enum.Font.SourceSansBold
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -190,8 +190,12 @@ function ShopUI:CreateUI()
 		descLabel.Size = UDim2.new(1, -4, 0, 20)
 		descLabel.Position = UDim2.new(0, 2, 0, 26)
 		descLabel.BackgroundTransparency = 1
-		descLabel.Text = item.Description
-		descLabel.TextColor3 = COLORS.Gray
+		if item.IsHidden then
+			descLabel.Text = "仙晶达到 " .. tostring(item.Price) .. " 后揭晓"
+		else
+			descLabel.Text = item.Description
+		end
+		descLabel.TextColor3 = item.IsHidden and COLORS.DarkGray or COLORS.Gray
 		descLabel.TextSize = 12
 		descLabel.Font = Enum.Font.SourceSans
 		descLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -256,7 +260,11 @@ function ShopUI:CreateUI()
 		end
 		local hasMoney = (currentShopData.XianJing or 0) >= item.Price
 
-		if isSoldOut then
+		if item.IsHidden then
+			buyBtn.Text = "???"
+			buyBtn.BackgroundColor3 = COLORS.DarkGray
+			buyBtn.Active = false
+		elseif isSoldOut then
 			buyBtn.Text = "已售罄"
 			buyBtn.BackgroundColor3 = COLORS.DarkGray
 			buyBtn.Active = false
@@ -356,7 +364,11 @@ function ShopUI:RefreshUI(data)
 		end
 		local hasMoney = (data.XianJing or 0) >= item.Price
 
-		if isSoldOut then
+		if item.IsHidden then
+			refs.buyBtn.Text = "???"
+			refs.buyBtn.BackgroundColor3 = COLORS.DarkGray
+			refs.buyBtn.Active = false
+		elseif isSoldOut then
 			refs.buyBtn.Text = "已售罄"
 			refs.buyBtn.BackgroundColor3 = COLORS.DarkGray
 			refs.buyBtn.Active = false

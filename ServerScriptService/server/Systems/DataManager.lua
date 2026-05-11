@@ -65,6 +65,7 @@ local DEFAULT_DATA = {
 	HasSeenAlchemyTutorial = false,  -- 是否看过炼丹新手引导
 	HasSeenBeastTutorial = false,   -- 是否看过妖兽角斗场新手引导
 	LastPrayerDate = "",   -- 上次祈福日期（防止重复）
+	RevealedShopItems = {},  -- 已揭晓的朦胧丹药 { "XiuWeiXiaoDan" = true }
 }
 
 local function getDefaultData()
