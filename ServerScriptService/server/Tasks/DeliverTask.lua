@@ -190,6 +190,9 @@ function DeliverTask.OnPlayerPickup(player, _area)
 
 	carrying[player.UserId] = true
 
+	-- 生成订单目标（Pick 时分配）
+	assignOrder()
+
 	local char = player.Character
 	if not char then return false end
 
@@ -259,8 +262,7 @@ function DeliverTask.OnPlayerDrop(player, area)
 
 	print("✅ 传菜完成，状态已更新")
 
-	-- 分配下一单
-	assignOrder()
+	-- 订单已在 Pick 时分配，Drop 不再分配
 
 	return true, "Success"
 end
