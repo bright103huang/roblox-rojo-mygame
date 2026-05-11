@@ -53,6 +53,9 @@ end
 local currentGameHour = 6  -- 从卯时（6:00）开始
 local isNight = false
 local lastMidnightTick = 0  -- 防止重复结算
+local lastHourLabel = ""      -- 上一次广播的时辰标签
+local isNight = false
+local lastMidnightTick = 0  -- 防止重复结算
 
 -- ============================================================
 -- 获取当前时辰效率修正
@@ -208,6 +211,19 @@ task.spawn(function()
 			task.spawn(function()
 				broadcastTimeToPlayer(player, currentGameHour, hourName, isNight)
 			end)
+		end
+
+		-- 时辰变更通知（通过 TaskEvent 触发客户端提示）
+		local modifier = getCurrentTimeModifier()
+		if modifier.Label ~= lastHourLabel then
+			lastHourLabel = modifier.Label
+			local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+			if eventsFolder then
+				local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
+				if taskEvent then
+					taskEvent:FireAllClients("HourChange", { Label = modifier.Label, Hour = currentGameHour })
+				end
+			end
 		end
 	end
 end)
