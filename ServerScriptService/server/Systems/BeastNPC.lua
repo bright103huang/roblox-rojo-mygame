@@ -201,6 +201,9 @@ local function buildAnimalShape(npc, root, animalDef)
 		weld.Part0 = root
 		weld.Part1 = part
 		weld.Parent = part
+		-- Set the part's position relative to the root
+		local partOffset = partDef.Offset * s
+		part.CFrame = root.CFrame * CFrame.new(partOffset)
 	end
 
 	-- 龙妖额外火焰粒子
