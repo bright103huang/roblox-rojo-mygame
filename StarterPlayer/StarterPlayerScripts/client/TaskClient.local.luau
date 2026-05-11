@@ -14,6 +14,9 @@ local player = Players.LocalPlayer
 local Config = require(ReplicatedStorage.Shared.Config)
 local TaskConfig = Config.Task
 
+-- 统一提示模块
+local TaskNotice = require(ReplicatedStorage.Shared.UI.TaskNotice)
+
 -- ============================================================
 -- 等待 TaskEvent
 -- ============================================================
@@ -265,26 +268,54 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 		return
 	end
 
+	-- 时辰变更通知
+	if result == "HourChange" then
+		TaskNotice:Notify({
+			Title = "⏰ " .. tostring(extraData and extraData.Label or ""),
+			Text = "第 " .. tostring(extraData and extraData.Hour or 0) .. " 时辰",
+			Duration = 2,
+			Color = Color3.fromRGB(180, 180, 250),
+		})
+		return
+	end
+
 	-- 妖兽角斗场战斗事件
 	if result == "BeastFightStart" then
-		print("🏟️ 角斗场战斗开始！妖兽: " .. tostring(extraData and extraData.AnimalName))
+		TaskNotice:Notify({
+			Title = "⚔ 妖兽出现",
+			Text = "妖兽: " .. tostring(extraData and extraData.AnimalName or "???"),
+			Duration = 2,
+		})
 		return
 	end
 
 	if result == "BeastCollision" then
-		print("💥 第 " .. tostring(extraData and extraData.Round) .. " 轮碰撞！")
+		TaskNotice:Notify({
+			Title = "💥 碰撞",
+			Text = "第 " .. tostring(extraData and extraData.Round or 1) .. " 轮碰撞！",
+			Duration = 1.5,
+			Color = Color3.fromRGB(255, 180, 60),
+		})
 		return
 	end
 
 	if result == "BeastVictory" then
 		getState("Beast").carrying = false
-		print("⚔️ " .. tostring(extraData and extraData.Message or "击败妖兽！"))
+		TaskNotice:Notify({
+			Title = "🏆 胜利",
+			Text = tostring(extraData and extraData.Message or "击败妖兽！"),
+			Color = Color3.fromRGB(80, 200, 80),
+		})
 		return
 	end
 
 	if result == "BeastLost" then
 		getState("Beast").carrying = false
-		print("💥 " .. tostring(extraData and extraData.Message or "妖兽太强！"))
+		TaskNotice:Notify({
+			Title = "💀 战败",
+			Text = tostring(extraData and extraData.Message or "妖兽太强！"),
+			Color = Color3.fromRGB(255, 60, 60),
+		})
 		return
 	end
 
@@ -306,7 +337,12 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 	local state = getState(taskName)
 
 	if resultType == "DropSuccess" then
-		print("客户端：" .. taskName .. " 交付成功")
+		TaskNotice:Notify({
+			Title = "✅ 交付成功",
+			Text = taskName .. " 任务完成",
+			Duration = 2,
+			Color = Color3.fromRGB(80, 200, 80),
+		})
 		state.carrying = false
 
 		-- 清理手持道具
@@ -333,7 +369,11 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 
 	elseif resultType == "LevelUp" then
 		-- 属性升级（由 StatusService 触发）
-		print("⬆ " .. taskName .. " 升级至 Lv." .. tostring(result))
+		TaskNotice:Notify({
+			Title = "⬆ 升级",
+			Text = taskName .. " 提升至 Lv." .. tostring(result),
+			Color = Color3.fromRGB(100, 200, 255),
+		})
 
 	elseif resultType == "BeastHit" then
 		-- 妖兽攻击玩家
@@ -377,11 +417,19 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 
 	elseif resultType == "PoisonBurst" then
 		-- 毒戾入体: 毒发通知
-		print("[毒发] " .. tostring(result and result.Message))
+		TaskNotice:Notify({
+			Title = "☠ 毒戾入体",
+			Text = tostring(result and result.Message or "火毒发作！"),
+			Color = Color3.fromRGB(180, 60, 255),
+		})
 
 	elseif resultType == "SelfHarm" then
 		-- 狂躁: 误伤自己
-		print("[误伤] " .. tostring(result and result.Message))
+		TaskNotice:Notify({
+			Title = "💢 误伤",
+			Text = tostring(result and result.Message or "狂躁误伤自己！"),
+			Color = Color3.fromRGB(255, 100, 100),
+		})
 	end
 end)
 
