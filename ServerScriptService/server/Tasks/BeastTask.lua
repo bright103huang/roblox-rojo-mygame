@@ -55,11 +55,16 @@ function BeastTask.OnPlayerPickup(player, area)
 	-- Risk 妖气侵蚀: 根据 Risk 概率提升妖兽等级
 	local riskTierRoll = math.random()
 	local risk = data and data.Risk or 10
-	-- 找到当前 Risk 对应的概率表
+	-- 找到当前 Risk 对应的概率表（升序遍历避免 pairs 顺序不确定）
 	local spawnChances = { EliteChance = 0, BossChance = 0, RampageChance = 0 }
-	for threshold, chances in pairs(RiskConfig.SpawnModifiers) do
+	local thresholdKeys = {}
+	for k in pairs(RiskConfig.SpawnModifiers) do
+		table.insert(thresholdKeys, k)
+	end
+	table.sort(thresholdKeys)
+	for _, threshold in ipairs(thresholdKeys) do
 		if risk >= threshold then
-			spawnChances = chances
+			spawnChances = RiskConfig.SpawnModifiers[threshold]
 		end
 	end
 	-- Roll: 暴走 → Boss → Elite → Normal

@@ -54,8 +54,6 @@ local currentGameHour = 6  -- 从卯时（6:00）开始
 local isNight = false
 local lastMidnightTick = 0  -- 防止重复结算
 local lastHourLabel = ""      -- 上一次广播的时辰标签
-local isNight = false
-local lastMidnightTick = 0  -- 防止重复结算
 
 -- ============================================================
 -- 获取当前时辰效率修正
