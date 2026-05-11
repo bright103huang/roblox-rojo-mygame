@@ -242,7 +242,7 @@ function DeliverTask.OnPlayerDrop(player, area)
 	end
 
 	carrying[player.UserId] = nil
-	clearAllIndicators()
+		clearAllIndicators()
 
 	-- 删除手持的盘子和桃子
 	local char = player.Character
