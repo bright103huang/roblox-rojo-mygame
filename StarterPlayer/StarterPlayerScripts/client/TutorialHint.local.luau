@@ -1,3 +1,6 @@
+return nil
+-- 已废弃：引导提示牌已改用 SceneSetup 中的 createHintBoard 3D 漂浮牌
+
 -- ============================================================
 -- 文件：StarterPlayer.StarterPlayerScripts.Client.TutorialHint.local.luau
 -- 功能：场景感知新手引导提示，首次完成场景目标后淡出

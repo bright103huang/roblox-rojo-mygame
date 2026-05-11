@@ -138,6 +138,21 @@ local function createArea(cfg)
 end
 
 -- ============================================================
+-- 工具：创建地下地基（防止角色掉入虚空）
+-- ============================================================
+local function createUnderFloor(position, spanX, spanZ)
+	local part = Instance.new("Part")
+	part.Name = "UnderFloor"
+	part.Size = Vector3.new(spanX, 0.5, spanZ)
+	part.Position = position + Vector3.new(0, -1.5, 0)
+	part.Anchored = true
+	part.CanCollide = true
+	part.Transparency = 0.95
+	part.Material = Enum.Material.SmoothPlastic
+	part.Parent = workspace
+end
+
+-- ============================================================
 -- 工具：创建场景提示板
 -- ============================================================
 local function createHintBoard(position, text, color)
@@ -181,6 +196,7 @@ local function setupYiShanFangScene()
 
 	-- 地面（Z 从 -4 到 4，加宽至 170 覆盖取餐处 x=-80）
 	createFloor(origin + Vector3.new(0, -0.5, 0), 170, 8, BrickColor.new("Bright yellow"), 0.1)
+	createUnderFloor(origin + Vector3.new(0, -0.5, 0), 500, 40)
 
 	-- 后墙（z=-4）
 	createWall(origin + Vector3.new(0, 3, -4), 170, 6, 0.5, BrickColor.new("Dark brown"))
@@ -225,6 +241,25 @@ local function setupYiShanFangScene()
 		createDecor(origin + Vector3.new(xOffset + 1, 0.2, 2), Vector3.new(0.2, 0.5, 0.2), BrickColor.new("Dark brown"))
 	end
 
+	-- ============================================================
+	-- 场景引导提示（吐槽风）
+	-- ============================================================
+	createHintBoard(
+		origin + Vector3.new(-80, 4, 0),
+		"① 左边取桃→右边送——送错桌明天喂妖兽",
+		BrickColor.new("Bright yellow")
+	)
+	createHintBoard(
+		origin + Vector3.new(0, 4, 0),
+		"② 跟着 ⭐ 走，别问为什么，问就是编制",
+		BrickColor.new("Bright red")
+	)
+	createHintBoard(
+		origin + Vector3.new(50, 4, 0),
+		"③ 送到即结算——干得好加鸡腿，干不好……你懂的",
+		BrickColor.new("Bright green")
+	)
+
 	print("🍽️ 御膳房已就绪（取餐处: x=-80, 桌子: x=-50~50, 地板 170 宽）")
 end
 
@@ -236,6 +271,7 @@ local function setupAlchemyScene()
 
 	-- 地面
 	createFloor(origin + Vector3.new(0, -0.5, 0), 50, 8, BrickColor.new("Dark grey"), 0.1)
+	createUnderFloor(origin + Vector3.new(0, -0.5, 0), 500, 40)
 
 	-- 后岩壁（z=-4）
 	for x = -22, 22, 8 do
@@ -310,28 +346,28 @@ local function setupAlchemyScene()
 	-- 灵草台提示
 	createHintBoard(
 		origin + Vector3.new(-10, 4, 0),
-		"① 取药材",
+		"① 灵草台薅羊毛——药材随便拿不要钱",
 		BrickColor.new("Bright green")
 	)
 
 	-- 柴火堆提示
 	createHintBoard(
 		origin + Vector3.new(10, 4, 0),
-		"② 取柴火",
+		"② 柴火堆搬砖——点火就靠你了",
 		BrickColor.new("Bright orange")
 	)
 
 	-- 丹炉提示
 	createHintBoard(
 		origin + Vector3.new(0, 6, 0),
-		"③ 添柴 ×3 → 成丹",
+		"③ 添柴×3 赌一把——成丹血赚，炸炉不亏",
 		BrickColor.new("Bright orange")
 	)
 
 	-- 流程指示
 	createHintBoard(
 		origin + Vector3.new(-5, 2.5, 0),
-		"← 灵草  丹炉 →\n柴火堆",
+		"← 薅药材  炉子 →\n搬柴火",
 		BrickColor.new("Bright yellow")
 	)
 
@@ -389,6 +425,7 @@ local function setupBeastScene()
 	-- 地面：140 × 12（半个足球场的感觉）
 	-- ============================================================
 	createFloor(origin + Vector3.new(0, -0.5, 0), 140, 12, BrickColor.new("Light stone"), 0.05)
+	createUnderFloor(origin + Vector3.new(0, -0.5, 0), 500, 40)
 
 	-- ============================================================
 	-- 地面标记：中央战斗圈（同心圆环）
@@ -524,13 +561,13 @@ local function setupBeastScene()
 	-- 场景引导提示
 	-- ============================================================
 	createHintBoard(origin + Vector3.new(0, 6, 0),
-		"踏入角斗场红区 → 妖兽从右侧铁门冲出",
+		"① 踏入中央红区→召唤妖兽，跑都跑不掉",
 		BrickColor.new("Really red"))
 	createHintBoard(origin + Vector3.new(-28, 5, 0),
-		"走向妖兽触发三次碰撞冲击定胜负",
+		"② 走近妖兽→自动碰瓷，连撞三次定胜负",
 		BrickColor.new("Bright blue"))
 	createHintBoard(origin + Vector3.new(28, 5, 0),
-		"仙力越强胜率越高 | 小心妖兽突袭",
+		"③ 打不过就跑，30秒后妖兽自己下班",
 		BrickColor.new("Bright green"))
 
 	print("🏟️ 角斗场已就绪（140x12 沙地 + 12高背景墙 + 前低围栏 + 拱廊看台）")
@@ -544,6 +581,7 @@ local function setupShopScene()
 
 	-- 地面
 	createFloor(origin + Vector3.new(0, -0.5, 0), 40, 8, BrickColor.new("Bright violet"), 0.1)
+	createUnderFloor(origin + Vector3.new(0, -0.5, 0), 500, 40)
 
 	-- 后墙（z=-4）
 	createWall(origin + Vector3.new(0, 3, -4), 40, 6, 0.5, BrickColor.new("Dark green"))
@@ -575,6 +613,20 @@ local function setupShopScene()
 		bottle.Material = Enum.Material.Glass
 	end
 
+	-- ============================================================
+	-- 场景引导提示
+	-- ============================================================
+	createHintBoard(
+		origin + Vector3.new(0, 4, 0),
+		"① 看柜台——好货都在上面，仙晶带够了吗",
+		BrickColor.new("Bright violet")
+	)
+	createHintBoard(
+		origin + Vector3.new(0, 2.5, 0),
+		"② 仙晶不够？传送去打工啊，还愣着干啥",
+		BrickColor.new("Bright yellow")
+	)
+
 	print("💎 仙丹阁已就绪")
 end
 
@@ -586,6 +638,7 @@ local function setupHomeScene()
 
 	-- 地面
 	createFloor(origin + Vector3.new(0, -0.5, 0), 30, 8, BrickColor.new("Bright yellow"), 0.1)
+	createUnderFloor(origin + Vector3.new(0, -0.5, 0), 500, 40)
 
 	-- 后墙（z=-4）
 	createWall(origin + Vector3.new(0, 3, -4), 30, 6, 0.5, BrickColor.new("Dark brown"))
@@ -725,6 +778,20 @@ local function setupHomeScene()
 	light.Range = 20
 	light.Brightness = 3
 	light.Color = Color3.fromRGB(255, 200, 100)
+
+	-- ============================================================
+	-- 场景引导提示
+	-- ============================================================
+	createHintBoard(
+		origin + Vector3.new(0, 4, 0),
+		"① 蒲团上坐好——冥想回血回蓝一条龙",
+		BrickColor.new("Gold")
+	)
+	createHintBoard(
+		origin + Vector3.new(0, 2.5, 0),
+		"② 戾气太重坐不住？先去干点好事再来",
+		BrickColor.new("Bright orange")
+	)
 
 	print("🏠 家已就绪（炼化区: x=0）")
 end
