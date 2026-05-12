@@ -607,16 +607,16 @@ local function setupShopScene()
 	end
 
 	-- ============================================================
-	-- 柜台（Z=0 交互层）
+	-- 柜台（后层 Z=-2，与掌柜同层）
 	-- ============================================================
-	createDecor(origin + Vector3.new(0, 0.75, 0), Vector3.new(30, 1.5, 1.5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
+	createDecor(origin + Vector3.new(0, 0.75, -2), Vector3.new(30, 1.5, 1.5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
 
 	-- 台面样品
 	for i = 1, 3 do
 		local sx = -8 + (i - 1) * 8
-		local sample = createDecor(origin + Vector3.new(sx, 1.6, 0), Vector3.new(0.6, 0.6, 0.6), shelfColors[i + 1], Enum.PartType.Cylinder)
+		local sample = createDecor(origin + Vector3.new(sx, 1.6, -2), Vector3.new(0.6, 0.6, 0.6), shelfColors[i + 1], Enum.PartType.Cylinder)
 		sample.Material = Enum.Material.Glass
-		createDecor(origin + Vector3.new(sx, 2.1, 0), Vector3.new(0.3, 0.15, 0.3), BrickColor.new("Gold"), Enum.PartType.Cylinder)
+		createDecor(origin + Vector3.new(sx, 2.1, -2), Vector3.new(0.3, 0.15, 0.3), BrickColor.new("Gold"), Enum.PartType.Cylinder)
 	end
 
 	-- ============================================================
@@ -630,7 +630,7 @@ local function setupShopScene()
 	-- ============================================================
 	local shopArea = Instance.new("Part")
 	shopArea.Name = "DanShop"
-	shopArea.Size = Vector3.new(3, 0.25, 3)
+	shopArea.Size = Vector3.new(5, 0.25, 3)
 	shopArea.Position = origin + Vector3.new(-3, -0.25, 0)
 	shopArea.Anchored = true
 	shopArea.CanCollide = false
@@ -683,19 +683,12 @@ local function setupShopScene()
 	-- 门槛
 	createDecor(origin + Vector3.new(-38, 0.25, 0), Vector3.new(2, 0.5, 3), BrickColor.new("Dark grey"))
 
-	-- 地面砖纹
-	for x = -39, 39, 5 do
-		createDecor(origin + Vector3.new(x, -0.25, 0), Vector3.new(0.1, 0.05, 7), BrickColor.new("Dark grey"))
-	end
-	for z = -3, 3, 2 do
-		createDecor(origin + Vector3.new(0, -0.25, z), Vector3.new(78, 0.05, 0.1), BrickColor.new("Dark grey"))
-	end
 
 	-- ============================================================
 	-- 场景引导提示
 	-- ============================================================
 	createHintBoard(origin + Vector3.new(-3, 5, 0),
-		"① 触碰掌柜 → 打开丹药铺",
+		"① 站上金色光圈 → 打开丹药铺",
 		BrickColor.new("Gold"))
 	createHintBoard(origin + Vector3.new(10, 5, 0),
 		"② 点击「砍价」按钮可议价",
