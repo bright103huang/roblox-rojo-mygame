@@ -105,36 +105,39 @@ local BARGAIN_QUESTIONS = {
 -- ============================================================
 local pendingBargains = {}
 
-function ShopService:HandleBargain(player, itemKey, choiceIndex)
-	local data = DataManager:GetData(player)
-	if not data then return { Success = false, Message = "数据未加载" } end
-	local item = DanConfig.Items[itemKey]
-	if not item then return { Success = false, Message = "未知商品" } end
-
-	-- 没传 choiceIndex = 客户端请求题目
-	if not choiceIndex then
-		local qId = math.random(1, #BARGAIN_QUESTIONS)
-		local q = BARGAIN_QUESTIONS[qId]
-		return { Success = true, Question = q.Question, Options = q.Options, QuestionId = qId }
+function ShopService:RequestBargainQuestion(player, itemKey)
+	local uid = player.UserId
+	if pendingBargains[uid] and pendingBargains[uid][itemKey] ~= nil then
+		return { Question = nil }
 	end
+	local qId = math.random(1, #BARGAIN_QUESTIONS)
+	local q = BARGAIN_QUESTIONS[qId]
+	return { Question = q.Question, Options = q.Options, QuestionId = qId }
+end
 
+function ShopService:SubmitBargainAnswer(player, itemKey, choiceIndex)
 	local q = BARGAIN_QUESTIONS[choiceIndex]
 	if not q then return { Success = false, Message = "无效选项" } end
 
+	local uid = player.UserId
+	if pendingBargains[uid] and pendingBargains[uid][itemKey] ~= nil then
+		return { Success = false, Message = "已砍过价了" }
+	end
+
 	local isCorrect = (choiceIndex == q.Correct) or (q.CorrectAlt and choiceIndex == q.CorrectAlt)
+	if not pendingBargains[uid] then pendingBargains[uid] = {} end
 	if isCorrect then
-		local uid = player.UserId
-		if not pendingBargains[uid] then pendingBargains[uid] = {} end
 		pendingBargains[uid][itemKey] = true
 		return { Success = true, Message = "老板很开心！给你打 8 折！" }
 	else
+		pendingBargains[uid][itemKey] = false
 		return { Success = false, Message = "老板不高兴，还是原价吧" }
 	end
 end
 
 function ShopService:GetBargainDiscount(player, itemKey)
 	local uid = player.UserId
-	if pendingBargains[uid] and pendingBargains[uid][itemKey] then
+	if pendingBargains[uid] and pendingBargains[uid][itemKey] == true then
 		return 0.8
 	end
 	return 1.0
@@ -221,44 +224,64 @@ function ShopService:Purchase(player, itemKey)
 		data.DailyPurchases = purchases
 	end
 
-	-- 发放效果
-	local effectType = item.EffectType
-	local effectValue = item.EffectValue
+	-- 改为存入背包
+	local backpack = data.Backpack or {}
+	backpack[itemKey] = (backpack[itemKey] or 0) + 1
+	data.Backpack = backpack
+	DataManager:UpdateField(player, "Backpack", backpack)
 
+	print("🛒 " .. player.Name .. " 购买了 " .. (item.RealName or item.Name) .. "（背包 +1）")
+	return "Success", "购买成功！" .. (item.RealName or item.Name) .. " 已存入背包"
+end
+
+
+
+-- ============================================================
+-- 使用物品（从背包消耗，应用效果）
+-- isMeditating: 打坐状态效果 x1.5
+-- ============================================================
+function ShopService:UseItem(player, itemKey, isMeditating)
+	local data = DataManager:GetData(player)
+	if not data then return { Success = false, Message = "数据未加载" } end
+	local backpack = data.Backpack or {}
+	local count = backpack[itemKey] or 0
+	if count <= 0 then return { Success = false, Message = "背包中没有该物品" } end
+	local item = DanConfig.Items[itemKey]
+	if not item then return { Success = false, Message = "未知物品" } end
+	backpack[itemKey] = count - 1
+	if backpack[itemKey] <= 0 then backpack[itemKey] = nil end
+	data.Backpack = backpack
+	DataManager:UpdateField(player, "Backpack", backpack)
+	local effectValue = item.EffectValue
+	if isMeditating then
+		effectValue = math.floor(effectValue * 1.5)
+	end
+	local effectType = item.EffectType
 	if effectType == "Stamina" or effectType == "Spirit"
 		or effectType == "Fatigue" or effectType == "FirePoison"
 		or effectType == "Malice" then
-		-- 即时状态：通过 ApplyCosts 处理（支持正/负值）
 		local costs = {}
 		costs[effectType] = effectValue
 		StatusService:ApplyCosts(player, costs)
-
 	elseif effectType == "AgilityExp" then
 		StatusService:AddExp(player, "Agility", effectValue)
-
 	elseif effectType == "AlchemyExp" then
 		StatusService:AddExp(player, "AlchemyLv", effectValue)
-
 	elseif effectType == "CombatExp" then
 		StatusService:AddExp(player, "Combat", effectValue)
-
 	elseif effectType == "RandomStat" then
 		local stats = { "Agility", "AlchemyLv", "Combat" }
 		local chosen = stats[math.random(1, #stats)]
 		StatusService:AddExp(player, chosen, effectValue)
-		local nameMap = { Agility = "身法", AlchemyLv = "火候", Combat = "仙力" }
-		return "Success", "购买成功！" .. (nameMap[chosen] or chosen) .. " +1"
-
 	elseif effectType == "AllStats" then
 		StatusService:AddExp(player, "Agility", effectValue)
 		StatusService:AddExp(player, "AlchemyLv", effectValue)
 		StatusService:AddExp(player, "Combat", effectValue)
-		return "Success", "购买成功！全属性 +1"
 	end
-
-	print("🛒 " .. player.Name .. " 购买了 " .. (item.RealName or item.Name))
-	return "Success", "购买成功！获得 " .. (item.RealName or item.Name)
+	print("💊 " .. player.Name .. " 使用了 " .. (item.RealName or item.Name))
+	return { Success = true, Message = "使用成功" }
 end
+
 
 -- ============================================================
 -- 监听客户端请求
@@ -328,6 +351,7 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			Items = items,
 			DailyPurchases = data.DailyPurchases or {},
 			XianJing = data.XianJing or 0,
+			Backpack = data.Backpack or {},
 		})
 		return
 	end
@@ -352,20 +376,55 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		return
 	end
 
-	-- 砍价
+	-- 砍价（2 步协议：先请求题目，再提交答案）
 	if action == "Bargain:Shop" then
 		local itemKey = contextData and contextData.ItemKey
 		local choiceIndex = contextData and contextData.ChoiceIndex
 		if not itemKey then return end
 
-		local result = ShopService:HandleBargain(player, itemKey, choiceIndex)
+		-- 检查营业时间
+		if player:GetAttribute("ShopOpen") == 0 then
+			ShopEvent:FireClient(player, "BargainResult", {
+				Success = false,
+				Message = "仙丹阁已打烊",
+			})
+			return
+		end
 
-		ShopEvent:FireClient(player, "BargainResult:Shop", {
+		if not choiceIndex then
+			-- Step 1: 请求题目
+			local result = ShopService:RequestBargainQuestion(player, itemKey)
+			ShopEvent:FireClient(player, "BargainQuestion", {
+				ItemKey = itemKey,
+				Question = result.Question,
+				Options = result.Options,
+				QuestionId = result.QuestionId,
+			})
+		else
+			-- Step 2: 提交答案
+			local result = ShopService:SubmitBargainAnswer(player, itemKey, choiceIndex)
+			ShopEvent:FireClient(player, "BargainResult", {
+				Success = result.Success,
+				Message = result.Message,
+				ItemKey = itemKey,
+			})
+		end
+		return
+	end
+
+	-- 使用物品
+	if action == "UseItem:Shop" then
+		local itemKey = contextData and contextData.ItemKey
+		local isMeditating = contextData and contextData.IsMeditating or false
+		if not itemKey then return end
+
+		local result = ShopService:UseItem(player, itemKey, isMeditating)
+
+		local data = DataManager:GetData(player)
+		ShopEvent:FireClient(player, "UseItemResult", {
 			Success = result.Success,
 			Message = result.Message,
-			Question = result.Question,
-			Options = result.Options,
-			QuestionId = result.QuestionId,
+			Backpack = data and data.Backpack or {},
 		})
 		return
 	end
