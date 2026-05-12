@@ -630,8 +630,8 @@ local function setupShopScene()
 	-- ============================================================
 	local shopArea = Instance.new("Part")
 	shopArea.Name = "DanShop"
-	shopArea.Size = Vector3.new(3, 0.5, 3)
-	shopArea.Position = origin + Vector3.new(-3, 0.25, 0)
+	shopArea.Size = Vector3.new(3, 0.25, 3)
+	shopArea.Position = origin + Vector3.new(-3, -0.25, 0)
 	shopArea.Anchored = true
 	shopArea.CanCollide = false
 	shopArea.CanQuery = true
