@@ -569,60 +569,115 @@ local function setupBeastScene()
 end
 
 -- ============================================================
--- 仙丹阁 — 2D 横版布局
+-- 仙丹阁 — 2D 横版布局（宽敞大气版）
 -- ============================================================
 local function setupShopScene()
 	local origin = SCENES.DanShop
+	local W = 80
+	local H = 12
 
 	-- 地面
-	createFloor(origin + Vector3.new(0, -0.5, 0), 40, 8, BrickColor.new("Bright violet"), 0.1)
+	createFloor(origin + Vector3.new(0, -0.5, 0), W, 8, BrickColor.new("Bright violet"), 0.1)
 	createUnderFloor(origin + Vector3.new(0, -0.5, 0), 500, 40)
 
 	-- 后墙（z=-4）
-	createWall(origin + Vector3.new(0, 3, -4), 40, 6, 0.5, BrickColor.new("Dark green"))
+	createWall(origin + Vector3.new(0, H / 2, -4), W, H, 0.5, BrickColor.new("Dark green"))
 
-	-- 前柱（z=4）
-	for x = -16, 16, 10 do
-		createPillar(origin + Vector3.new(x, 3, 4), 6, BrickColor.new("Dark green"))
-	end
-
-	-- 柜台（z=±2 装饰）
-	createDecor(origin + Vector3.new(0, 1, -2), Vector3.new(24, 1.5, 0.5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
-	createDecor(origin + Vector3.new(0, 1, 2), Vector3.new(24, 1.5, 0.5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
-
-	-- 仙丹阁（交互区域，Z=0）
-	createArea({
-		Name = "DanShop",
-		Position = origin + Vector3.new(0, 1, 0),
-		Size = Vector3.new(4, 0.5, 4),
-		Color = BrickColor.new("Bright violet"),
-		Transparency = 0.2,
-		Label = "仙丹阁",
-	})
-
-	-- 丹药展示（z=±3 装饰层）
-	for i = 1, 5 do
-		local xOffset = -12 + (i - 1) * 6
-		createDecor(origin + Vector3.new(xOffset, 0.5, -3), Vector3.new(1.5, 0.8, 1), BrickColor.new("Gold"), Enum.PartType.Cylinder)
-		local bottle = createDecor(origin + Vector3.new(xOffset, 1.2, -3), Vector3.new(0.5, 0.8, 0.5), BrickColor.new("Bright blue"), Enum.PartType.Cylinder)
+	-- ============================================================
+	-- 药柜墙（后层 Z=-4）
+	-- ============================================================
+	local cabinetY = 2
+	local shelfColors = {
+		BrickColor.new("Bright blue"),
+		BrickColor.new("Bright violet"),
+		BrickColor.new("Gold"),
+		BrickColor.new("Bright green"),
+		BrickColor.new("Really red"),
+		BrickColor.new("Bright orange"),
+	}
+	for i = 1, 6 do
+		local cx = -24 + (i - 1) * 9
+		createDecor(origin + Vector3.new(cx, cabinetY, -4), Vector3.new(3, 3.5, 0.3), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
+		local bottle = createDecor(origin + Vector3.new(cx, cabinetY + 1.2, -4), Vector3.new(1, 1.5, 1), shelfColors[i], Enum.PartType.Cylinder)
 		bottle.Material = Enum.Material.Glass
+		createDecor(origin + Vector3.new(cx, cabinetY + 2.2, -4), Vector3.new(0.6, 0.3, 0.6), BrickColor.new("Gold"), Enum.PartType.Cylinder)
+		local glow = createDecor(origin + Vector3.new(cx, cabinetY - 0.5, -4), Vector3.new(1.2, 0.2, 1.2), shelfColors[i])
+		glow.Material = Enum.Material.Neon
+		glow.Transparency = 0.3
 	end
 
 	-- ============================================================
-	-- 场景引导提示
+	-- 柜台（Z=0 交互层）
 	-- ============================================================
-	createHintBoard(
-		origin + Vector3.new(0, 4, 0),
-		"① 看柜台——好货都在上面，仙晶带够了吗",
-		BrickColor.new("Bright violet")
-	)
-	createHintBoard(
-		origin + Vector3.new(0, 2.5, 0),
-		"② 仙晶不够？传送去打工啊，还愣着干啥",
-		BrickColor.new("Bright yellow")
-	)
+	createDecor(origin + Vector3.new(0, 0.75, 0), Vector3.new(30, 1.5, 1.5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
 
-	print("💎 仙丹阁已就绪")
+	-- 台面样品
+	for i = 1, 3 do
+		local sx = -8 + (i - 1) * 8
+		local sample = createDecor(origin + Vector3.new(sx, 1.6, 0), Vector3.new(0.6, 0.6, 0.6), shelfColors[i + 1], Enum.PartType.Cylinder)
+		sample.Material = Enum.Material.Glass
+		createDecor(origin + Vector3.new(sx, 2.1, 0), Vector3.new(0.3, 0.15, 0.3), BrickColor.new("Gold"), Enum.PartType.Cylinder)
+	end
+
+	-- ============================================================
+	-- 掌柜 NPC
+	-- ============================================================
+	local ShopkeeperNPC = require(script.Parent.ShopkeeperNPC)
+	ShopkeeperNPC.Spawn(origin + Vector3.new(-3, 0.5, 0))
+
+	-- ============================================================
+	-- 牌匾
+	-- ============================================================
+	createDecor(origin + Vector3.new(0, 6, -3), Vector3.new(8, 1.5, 0.3), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
+	createDecor(origin + Vector3.new(-4, 6, -3), Vector3.new(0.3, 1.8, 0.3), BrickColor.new("Gold"))
+	createDecor(origin + Vector3.new(4, 6, -3), Vector3.new(0.3, 1.8, 0.3), BrickColor.new("Gold"))
+	local signPart = createDecor(origin + Vector3.new(0, 6, -2.8), Vector3.new(7.5, 1.2, 0.1), BrickColor.new("Dark brown"))
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "SignText"
+	bb.Size = UDim2.new(0, 8, 0, 2)
+	bb.StudsOffset = Vector3.new(0, 0.2, 0)
+	bb.AlwaysOnTop = true
+	bb.Parent = signPart
+	local signLabel = Instance.new("TextLabel")
+	signLabel.Size = UDim2.new(1, 0, 1, 0)
+	signLabel.BackgroundTransparency = 1
+	signLabel.Text = "仙丹阁"
+	signLabel.TextColor3 = Color3.new(1, 0.85, 0)
+	signLabel.TextSize = 28
+	signLabel.Font = Enum.Font.SourceSansBold
+	signLabel.TextStrokeTransparency = 0.3
+	signLabel.Parent = bb
+
+	-- ============================================================
+	-- 前层装饰（Z=4）
+	-- ============================================================
+	-- 灯笼（入口两侧）
+	for i = 1, 2 do
+		local lx = -35 + (i - 1) * 70
+		createDecor(origin + Vector3.new(lx, 2, 4), Vector3.new(0.3, 4, 0.3), BrickColor.new("Dark brown"))
+		createDecor(origin + Vector3.new(lx, 3.5, 4), Vector3.new(1.2, 1.2, 1.2), BrickColor.new("Bright red"), Enum.PartType.Cylinder)
+		local glowRing = createDecor(origin + Vector3.new(lx, 3.5, 4), Vector3.new(1.4, 0.2, 1.4), BrickColor.new("Bright yellow"))
+		glowRing.Material = Enum.Material.Neon
+		glowRing.Transparency = 0.5
+	end
+	-- 盆栽
+	for _, sideX in ipairs({ -30, 30 }) do
+		createDecor(origin + Vector3.new(sideX, 0.8, 4), Vector3.new(1.5, 1.5, 1.5), BrickColor.new("Bright green"), Enum.PartType.Cylinder)
+		createDecor(origin + Vector3.new(sideX, 0.2, 4), Vector3.new(1.8, 0.4, 1.8), BrickColor.new("Dark brown"), Enum.PartType.Cylinder)
+	end
+
+	-- 门槛
+	createDecor(origin + Vector3.new(-38, 0.25, 0), Vector3.new(2, 0.5, 3), BrickColor.new("Dark grey"))
+
+	-- 地面砖纹
+	for x = -39, 39, 5 do
+		createDecor(origin + Vector3.new(x, -0.25, 0), Vector3.new(0.1, 0.05, 7), BrickColor.new("Dark grey"))
+	end
+	for z = -3, 3, 2 do
+		createDecor(origin + Vector3.new(0, -0.25, z), Vector3.new(78, 0.05, 0.1), BrickColor.new("Dark grey"))
+	end
+
+	print("💎 仙丹阁已就绪（宽敞大气版）")
 end
 
 -- ============================================================
