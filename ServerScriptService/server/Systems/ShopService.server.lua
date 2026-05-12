@@ -278,7 +278,7 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		end
 
 		-- 检查限购刷新
-t	ShopService:ClearBargains(player)
+		ShopService:ClearBargains(player)
 		ShopService:CheckReset(player, data)
 
 		-- 朦胧机制：检查并更新已揭晓的丹药
