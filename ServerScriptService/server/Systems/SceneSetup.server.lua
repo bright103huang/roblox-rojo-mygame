@@ -620,11 +620,25 @@ local function setupShopScene()
 	end
 
 	-- ============================================================
-	-- 掌柜 NPC
+	-- 掌柜 NPC（视觉，在柜台后面 Z=-2）
 	-- ============================================================
 	local ShopkeeperNPC = require(script.Parent.ShopkeeperNPC)
-	ShopkeeperNPC.Spawn(origin + Vector3.new(-3, 0.5, 0))
+	ShopkeeperNPC.Spawn(origin + Vector3.new(-3, 0.5, -2))
 
+	-- ============================================================
+	-- 交互区域（地上金色光圈，玩家 Z=0 可触碰）
+	-- ============================================================
+	local shopArea = Instance.new("Part")
+	shopArea.Name = "DanShop"
+	shopArea.Size = Vector3.new(3, 0.5, 3)
+	shopArea.Position = origin + Vector3.new(-3, 0.25, 0)
+	shopArea.Anchored = true
+	shopArea.CanCollide = false
+	shopArea.CanQuery = true
+	shopArea.BrickColor = BrickColor.new("Gold")
+	shopArea.Material = Enum.Material.Neon
+	shopArea.Transparency = 0.3
+	shopArea.Parent = workspace
 	-- ============================================================
 	-- 牌匾
 	-- ============================================================
