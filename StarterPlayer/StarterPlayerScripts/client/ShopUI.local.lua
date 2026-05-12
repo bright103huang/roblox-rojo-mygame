@@ -29,6 +29,7 @@ local screenGui = nil
 local currentShopData = nil
 local itemButtons = {}  -- [itemKey] = { frame, buyBtn, countLabel, bargainBtn }
 local bargainState = {} -- [itemKey] = { discounted = bool }
+local uiRefs = {}
 
 -- ============================================================
 -- 颜色常量
@@ -352,8 +353,7 @@ function ShopUI:CreateUI()
 	end)
 
 	-- 存储引用
-	screenGui:SetAttribute("_balanceLabel", balanceLabel)
-	screenGui:SetAttribute("_itemButtons", itemButtons)
+	uiRefs.balanceLabel = balanceLabel
 
 	-- 结果弹窗 + 砍价弹窗
 	self:CreateResultPopup(panel)
@@ -408,19 +408,19 @@ function ShopUI:CreateBargainPopup(parent)
 		optionButtons[i] = btn
 	end
 
-	screenGui:SetAttribute("_bargainPopup", frame)
-	screenGui:SetAttribute("_bargainQuestion", questionLabel)
-	screenGui:SetAttribute("_bargainOptions", optionButtons)
+	uiRefs.bargainPopup = frame
+	uiRefs.bargainQuestion = questionLabel
+	uiRefs.bargainOptions = optionButtons
 end
 
 function ShopUI:ShowBargainDialog(data)
-	local popup = screenGui and screenGui:GetAttribute("_bargainPopup")
-	local questionLabel = screenGui and screenGui:GetAttribute("_bargainQuestion")
-	local optionButtons = screenGui and screenGui:GetAttribute("_bargainOptions")
+	local popup = screenGui and uiRefs.bargainPopup
+	local questionLabel = screenGui and uiRefs.bargainQuestion
+	local optionButtons = screenGui and uiRefs.bargainOptions
 	if not popup or not questionLabel or not optionButtons then return end
 
 	-- 隐藏结果弹窗
-	local resultPopup = screenGui and screenGui:GetAttribute("_resultPopup")
+	local resultPopup = screenGui and uiRefs.resultPopup
 	if resultPopup then
 		resultPopup.Visible = false
 		resultPopup.BackgroundTransparency = 1
@@ -463,7 +463,7 @@ function ShopUI:RefreshUI(data)
 	if not screenGui then return end
 	currentShopData = data
 
-	local balanceLabel = screenGui:GetAttribute("_balanceLabel")
+	local balanceLabel = uiRefs.balanceLabel
 	if balanceLabel then
 		balanceLabel.Text = "仙晶：" .. tostring(data.XianJing or 0)
 	end
@@ -576,15 +576,15 @@ function ShopUI:CreateResultPopup(parent)
 	resultMessage.Font = Enum.Font.SourceSans
 	resultMessage.Parent = resultFrame
 
-	screenGui:SetAttribute("_resultPopup", resultFrame)
-	screenGui:SetAttribute("_resultTitle", resultTitle)
-	screenGui:SetAttribute("_resultMsg", resultMessage)
+	uiRefs.resultPopup = resultFrame
+	uiRefs.resultTitle = resultTitle
+	uiRefs.resultMsg = resultMessage
 end
 
 function ShopUI:ShowResult(success, data)
-	local resultPopup = screenGui and screenGui:GetAttribute("_resultPopup")
-	local resultTitle = screenGui and screenGui:GetAttribute("_resultTitle")
-	local resultMsg = screenGui and screenGui:GetAttribute("_resultMsg")
+	local resultPopup = screenGui and uiRefs.resultPopup
+	local resultTitle = screenGui and uiRefs.resultTitle
+	local resultMsg = screenGui and uiRefs.resultMsg
 	if not resultPopup then return end
 
 	resultPopup.Visible = true
@@ -620,6 +620,7 @@ function ShopUI:Close()
 	end
 	itemButtons = {}
 	bargainState = {}
+	uiRefs = {}
 end
 
 -- ============================================================
@@ -640,7 +641,7 @@ if ShopEvent then
 
 		elseif eventType == "BargainResult:Shop" then
 			-- 隐藏砍价弹窗
-			local popup = screenGui and screenGui:GetAttribute("_bargainPopup")
+			local popup = screenGui and uiRefs.bargainPopup
 			if popup then
 				popup.Visible = false
 				popup.BackgroundTransparency = 1
