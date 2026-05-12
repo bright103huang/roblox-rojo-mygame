@@ -30,6 +30,8 @@ local currentShopData = nil
 local itemButtons = {}  -- [itemKey] = { frame, buyBtn, countLabel, bargainBtn }
 local bargainState = {} -- [itemKey] = { discounted = bool }
 local uiRefs = {}
+local isShopOpen = false
+local currentTab = "shop" -- "shop" or "backpack"
 
 -- ============================================================
 -- 颜色常量
@@ -81,11 +83,11 @@ function ShopUI:CreateUI()
 		end
 	end)
 
-	-- 主面板
+	-- 主面板（右下角）
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
-	panel.Size = UDim2.new(0, 400, 0, 500)
-	panel.Position = UDim2.new(0.5, -200, 0.5, -250)
+	panel.Size = UDim2.new(0, 350, 0, 460)
+	panel.Position = UDim2.new(1, -365, 1, -475)
 	panel.BackgroundColor3 = COLORS.Panel
 	panel.BorderSizePixel = 0
 	panel.Parent = screenGui
@@ -93,23 +95,80 @@ function ShopUI:CreateUI()
 	panelCorner.CornerRadius = UDim.new(0, 12)
 	panelCorner.Parent = panel
 
-	-- 标题
+	-- 标题栏
+	local titleBar = Instance.new("Frame")
+	titleBar.Name = "TitleBar"
+	titleBar.Size = UDim2.new(1, 0, 0, 32)
+	titleBar.BackgroundColor3 = COLORS.Bg
+	titleBar.BorderSizePixel = 0
+	titleBar.Parent = panel
+	local titleBarCorner = Instance.new("UICorner")
+	titleBarCorner.CornerRadius = UDim.new(0, 12)
+	titleBarCorner.Parent = titleBar
+
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-	title.Size = UDim2.new(1, 0, 0, 36)
-	title.Position = UDim2.new(0, 0, 0, 8)
+	title.Size = UDim2.new(0, 80, 1, 0)
+	title.Position = UDim2.new(0, 10, 0, 0)
 	title.BackgroundTransparency = 1
 	title.Text = "仙丹阁"
 	title.TextColor3 = COLORS.Gold
-	title.TextSize = 24
+	title.TextSize = 18
 	title.Font = Enum.Font.SourceSansBold
-	title.Parent = panel
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Parent = titleBar
 
+	-- 标签切换
+	local shopTab = Instance.new("TextButton")
+	shopTab.Name = "ShopTab"
+	shopTab.Size = UDim2.new(0, 50, 0, 24)
+	shopTab.Position = UDim2.new(0, 100, 0, 4)
+	shopTab.Text = "商店"
+	shopTab.TextColor3 = COLORS.Gold
+	shopTab.TextSize = 14
+	shopTab.Font = Enum.Font.SourceSansBold
+	shopTab.BackgroundColor3 = COLORS.DarkGray
+	shopTab.BorderSizePixel = 0
+	shopTab.Parent = titleBar
+	local shopTabCorner = Instance.new("UICorner")
+	shopTabCorner.CornerRadius = UDim.new(0, 4)
+	shopTabCorner.Parent = shopTab
+
+	local bpTab = Instance.new("TextButton")
+	bpTab.Name = "BackpackTab"
+	bpTab.Size = UDim2.new(0, 50, 0, 24)
+	bpTab.Position = UDim2.new(0, 155, 0, 4)
+	bpTab.Text = "背包"
+	bpTab.TextColor3 = COLORS.White
+	bpTab.TextSize = 14
+	bpTab.Font = Enum.Font.SourceSansBold
+	bpTab.BackgroundColor3 = COLORS.Panel
+	bpTab.BorderSizePixel = 0
+	bpTab.Parent = titleBar
+	local bpTabCorner = Instance.new("UICorner")
+	bpTabCorner.CornerRadius = UDim.new(0, 4)
+	bpTabCorner.Parent = bpTab
+
+	-- 关闭按钮
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Name = "CloseBtn"
+	closeBtn.Size = UDim2.new(0, 28, 0, 28)
+	closeBtn.Position = UDim2.new(1, -32, 0, 2)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = COLORS.Gray
+	closeBtn.TextSize = 16
+	closeBtn.Font = Enum.Font.SourceSansBold
+	closeBtn.BackgroundTransparency = 1
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = titleBar
+	closeBtn.MouseButton1Click:Connect(function()
+		self:Close()
+	end)
 	-- 仙晶余额
 	local balanceFrame = Instance.new("Frame")
 	balanceFrame.Name = "BalanceFrame"
-	balanceFrame.Size = UDim2.new(0.9, 0, 0, 32)
-	balanceFrame.Position = UDim2.new(0.05, 0, 0, 46)
+	balanceFrame.Size = UDim2.new(0.9, 0, 0, 28)
+	balanceFrame.Position = UDim2.new(0.05, 0, 0, 36)
 	balanceFrame.BackgroundColor3 = COLORS.Bg
 	balanceFrame.BorderSizePixel = 0
 	balanceFrame.Parent = panel
@@ -122,240 +181,49 @@ function ShopUI:CreateUI()
 	balanceLabel.Size = UDim2.new(1, -10, 1, 0)
 	balanceLabel.Position = UDim2.new(0, 5, 0, 0)
 	balanceLabel.BackgroundTransparency = 1
-	balanceLabel.Text = "仙晶："
-		.. tostring(currentShopData.XianJing or 0)
+	balanceLabel.Text = "仙晶：" .. tostring(currentShopData.XianJing or 0)
 	balanceLabel.TextColor3 = COLORS.Gold
-	balanceLabel.TextSize = 18
+	balanceLabel.TextSize = 16
 	balanceLabel.Font = Enum.Font.SourceSansBold
 	balanceLabel.TextXAlignment = Enum.TextXAlignment.Center
 	balanceLabel.Parent = balanceFrame
 
-	-- 分割线
-	local divider = Instance.new("Frame")
-	divider.Size = UDim2.new(0.9, 0, 0, 1)
-	divider.Position = UDim2.new(0.05, 0, 0, 82)
-	divider.BackgroundColor3 = COLORS.Gray
-	divider.BackgroundTransparency = 0.7
-	divider.BorderSizePixel = 0
-	divider.Parent = panel
+	-- 商品/背包容器（可滚动）
+	local scrollFrame = Instance.new("ScrollingFrame")
+	scrollFrame.Name = "ItemScroll"
+	scrollFrame.Size = UDim2.new(1, -10, 1, -80)
+	scrollFrame.Position = UDim2.new(0, 5, 0, 70)
+	scrollFrame.BackgroundTransparency = 1
+	scrollFrame.BorderSizePixel = 0
+	scrollFrame.ScrollBarThickness = 4
+	scrollFrame.Parent = panel
 
-	-- 商品网格（2 列 x 3 行）
-	local gridStartX = 24
-	local gridStartY = 92
-	local slotWidth = 170
-	local slotHeight = 190
-	local gapX = 12
-	local gapY = 12
-	local cols = 2
-
-	local items = currentShopData.Items or {}
-	local purchases = currentShopData.DailyPurchases or {}
-	local itemKeys = {}
-	for key in pairs(items) do
-		table.insert(itemKeys, key)
-	end
-	table.sort(itemKeys)
-
-	for i, itemKey in ipairs(itemKeys) do
-		local item = items[itemKey]
-		local col = (i - 1) % cols
-		local row = math.floor((i - 1) / cols)
-		local x = gridStartX + col * (slotWidth + gapX)
-		local y = gridStartY + row * (slotHeight + gapY)
-
-		-- 商品格子
-		local slot = Instance.new("Frame")
-		slot.Name = "Slot_" .. itemKey
-		slot.Size = UDim2.new(0, slotWidth, 0, slotHeight)
-		slot.Position = UDim2.new(0, x, 0, y)
-		slot.BackgroundColor3 = COLORS.Bg
-		slot.BorderSizePixel = 0
-		slot.Parent = panel
-		local slotCorner = Instance.new("UICorner")
-		slotCorner.CornerRadius = UDim.new(0, 8)
-		slotCorner.Parent = slot
-
-		-- 丹药名称
-		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Size = UDim2.new(1, -4, 0, 22)
-		nameLabel.Position = UDim2.new(0, 2, 0, 4)
-		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = item.Name
-		nameLabel.TextColor3 = item.IsHidden and COLORS.DarkGray or COLORS.White
-		nameLabel.TextSize = 16
-		nameLabel.Font = Enum.Font.SourceSansBold
-		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-		nameLabel.Parent = slot
-
-		-- 效果描述
-		local descLabel = Instance.new("TextLabel")
-		descLabel.Size = UDim2.new(1, -4, 0, 20)
-		descLabel.Position = UDim2.new(0, 2, 0, 26)
-		descLabel.BackgroundTransparency = 1
-		if item.IsHidden then
-			descLabel.Text = "仙晶达到 " .. tostring(item.Price) .. " 后揭晓"
-		else
-			descLabel.Text = item.Description
-		end
-		descLabel.TextColor3 = item.IsHidden and COLORS.DarkGray or COLORS.Gray
-		descLabel.TextSize = 12
-		descLabel.Font = Enum.Font.SourceSans
-		descLabel.TextXAlignment = Enum.TextXAlignment.Center
-		descLabel.Parent = slot
-
-		-- 价格
-		local priceLabel = Instance.new("TextLabel")
-		priceLabel.Name = "PriceLabel"
-		priceLabel.Size = UDim2.new(1, -4, 0, 20)
-		priceLabel.Position = UDim2.new(0, 2, 0, 48)
-		priceLabel.BackgroundTransparency = 1
-		priceLabel.Text = "仙晶 x" .. tostring(item.Price)
-		priceLabel.TextColor3 = COLORS.Gold
-		priceLabel.TextSize = 14
-		priceLabel.Font = Enum.Font.SourceSansBold
-		priceLabel.TextXAlignment = Enum.TextXAlignment.Center
-		priceLabel.Parent = slot
-
-		-- 限购次数显示
-		local countLabel = Instance.new("TextLabel")
-		countLabel.Name = "CountLabel"
-		countLabel.Size = UDim2.new(1, -4, 0, 18)
-		countLabel.Position = UDim2.new(0, 2, 0, 70)
-		countLabel.BackgroundTransparency = 1
-		countLabel.TextSize = 12
-		countLabel.Font = Enum.Font.SourceSans
-		countLabel.TextXAlignment = Enum.TextXAlignment.Center
-		countLabel.Parent = slot
-
-		if item.DailyLimit and item.DailyLimit > 0 then
-			local bought = purchases[itemKey] or 0
-			local remaining = item.DailyLimit - bought
-			countLabel.Text = "剩余 " .. tostring(remaining) .. "/" .. tostring(item.DailyLimit)
-			if remaining <= 0 then
-				countLabel.TextColor3 = COLORS.Red
-			else
-				countLabel.TextColor3 = COLORS.Green
-			end
-		else
-			countLabel.Text = "不限购"
-			countLabel.TextColor3 = COLORS.Gray
-		end
-
-		-- 购买按钮
-		local buyBtn = Instance.new("TextButton")
-		buyBtn.Name = "BuyBtn"
-		buyBtn.Size = UDim2.new(0.85, 0, 0, 28)
-		buyBtn.Position = UDim2.new(0.075, 0, 0, 95)
-		buyBtn.Text = "购买"
-		buyBtn.TextColor3 = COLORS.White
-		buyBtn.TextSize = 14
-		buyBtn.Font = Enum.Font.SourceSansBold
-		buyBtn.BorderSizePixel = 0
-		buyBtn.Parent = slot
-
-		-- 砍价按钮
-		local bargainBtn = Instance.new("TextButton")
-		bargainBtn.Name = "BargainBtn"
-		bargainBtn.Size = UDim2.new(0.85, 0, 0, 24)
-		bargainBtn.Position = UDim2.new(0.075, 0, 0, 128)
-		bargainBtn.Text = "砍价"
-		bargainBtn.TextColor3 = COLORS.White
-		bargainBtn.TextSize = 12
-		bargainBtn.Font = Enum.Font.SourceSansBold
-		bargainBtn.BackgroundColor3 = COLORS.Gold
-		bargainBtn.BorderSizePixel = 0
-		bargainBtn.Parent = slot
-		local bargainCorner = Instance.new("UICorner")
-		bargainCorner.CornerRadius = UDim.new(0, 6)
-		bargainCorner.Parent = bargainBtn
-
-		-- 检查是否可购买
-		local isSoldOut = false
-		if item.DailyLimit and item.DailyLimit > 0 then
-			local bought = purchases[itemKey] or 0
-			if bought >= item.DailyLimit then
-				isSoldOut = true
-			end
-		end
-		local hasMoney = (currentShopData.XianJing or 0) >= item.Price
-
-		if item.IsHidden then
-			buyBtn.Text = "???"
-			buyBtn.BackgroundColor3 = COLORS.DarkGray
-			buyBtn.Active = false
-			bargainBtn.Text = "???"
-			bargainBtn.BackgroundColor3 = COLORS.DarkGray
-			bargainBtn.Active = false
-		elseif isSoldOut then
-			buyBtn.Text = "已售罄"
-			buyBtn.BackgroundColor3 = COLORS.DarkGray
-			buyBtn.Active = false
-			bargainBtn.Visible = false
-		elseif not hasMoney then
-			buyBtn.BackgroundColor3 = COLORS.DarkRed
-			buyBtn.Active = true
-		else
-			buyBtn.BackgroundColor3 = COLORS.DarkGreen
-			buyBtn.Active = true
-		end
-		local buyCorner = Instance.new("UICorner")
-		buyCorner.CornerRadius = UDim.new(0, 6)
-		buyCorner.Parent = buyBtn
-
-		-- 购买按钮点击
-		buyBtn.MouseButton1Click:Connect(function()
-			if not buyBtn.Active then return end
-			buyBtn.Text = "购买中..."
-			buyBtn.Active = false
-			if ShopEvent then
-				ShopEvent:FireServer("Purchase:Shop", nil, {
-					ItemKey = itemKey,
-				})
-			end
-		end)
-
-		-- 砍价按钮点击
-		bargainBtn.MouseButton1Click:Connect(function()
-			if not bargainBtn.Active then return end
-			bargainBtn.Active = false
-			bargainBtn.Text = "砍价中..."
-			if ShopEvent then
-				ShopEvent:FireServer("Bargain:Shop", nil, {
-					ItemKey = itemKey,
-				})
-			end
-		end)
-
-		-- 保存引用
-		itemButtons[itemKey] = {
-			frame = slot,
-			buyBtn = buyBtn,
-			bargainBtn = bargainBtn,
-			countLabel = countLabel,
-			priceLabel = priceLabel,
-		}
-	end
-
-	-- 关闭按钮
-	local closeBtn = Instance.new("TextButton")
-	closeBtn.Name = "CloseBtn"
-	closeBtn.Size = UDim2.new(0, 30, 0, 30)
-	closeBtn.Position = UDim2.new(1, -36, 0, 6)
-	closeBtn.Text = "✕"
-	closeBtn.TextColor3 = COLORS.Gray
-	closeBtn.TextSize = 18
-	closeBtn.Font = Enum.Font.SourceSansBold
-	closeBtn.BackgroundTransparency = 1
-	closeBtn.BorderSizePixel = 0
-	closeBtn.Parent = panel
-	closeBtn.MouseButton1Click:Connect(function()
-		self:Close()
-	end)
-
-	-- 存储引用
+	uiRefs.scrollFrame = scrollFrame
 	uiRefs.balanceLabel = balanceLabel
 
-	-- 结果弹窗 + 砍价弹窗
+	-- 标签切换
+	local function switchTab(tab)
+		currentTab = tab
+		if tab == "shop" then
+			shopTab.BackgroundColor3 = COLORS.DarkGray
+			shopTab.TextColor3 = COLORS.Gold
+			bpTab.BackgroundColor3 = COLORS.Panel
+			bpTab.TextColor3 = COLORS.White
+			ShopUI:RenderItems()
+		else
+			bpTab.BackgroundColor3 = COLORS.DarkGray
+			bpTab.TextColor3 = COLORS.Gold
+			shopTab.BackgroundColor3 = COLORS.Panel
+			shopTab.TextColor3 = COLORS.White
+			ShopUI:RenderBackpack()
+		end
+	end
+
+	shopTab.MouseButton1Click:Connect(function() switchTab("shop") end)
+	bpTab.MouseButton1Click:Connect(function() switchTab("backpack") end)
+
+	-- 初始渲染商品列表
+	ShopUI:RenderItems()
 	self:CreateResultPopup(panel)
 	self:CreateBargainPopup(panel)
 end
@@ -468,78 +336,256 @@ function ShopUI:RefreshUI(data)
 		balanceLabel.Text = "仙晶：" .. tostring(data.XianJing or 0)
 	end
 
-	local purchases = data.DailyPurchases or {}
-	for itemKey, refs in pairs(itemButtons) do
-		local item = (data.Items or {})[itemKey]
-		if not item then continue end
-
-		if item.DailyLimit and item.DailyLimit > 0 then
-			local bought = purchases[itemKey] or 0
-			local remaining = item.DailyLimit - bought
-			refs.countLabel.Text = "剩余 " .. tostring(remaining) .. "/" .. tostring(item.DailyLimit)
-			if remaining <= 0 then
-				refs.countLabel.TextColor3 = COLORS.Red
-			else
-				refs.countLabel.TextColor3 = COLORS.Green
-			end
-		end
-
-		local isSoldOut = false
-		if item.DailyLimit and item.DailyLimit > 0 then
-			local bought = purchases[itemKey] or 0
-			if bought >= item.DailyLimit then
-				isSoldOut = true
-			end
-		end
-		local hasMoney = (data.XianJing or 0) >= item.Price
-
-		-- 如果已砍价成功，显示折后价
-		local bargained = bargainState[itemKey]
-		if bargained and bargained.discounted then
-			local discountedPrice = math.floor(item.Price * 0.8)
-			refs.priceLabel.Text = "仙晶 x" .. tostring(item.Price) .. " → (" .. tostring(discountedPrice) .. ")"
-			refs.priceLabel.TextColor3 = COLORS.Green
-		else
-			refs.priceLabel.Text = "仙晶 x" .. tostring(item.Price)
-			refs.priceLabel.TextColor3 = COLORS.Gold
-		end
-
-		if item.IsHidden then
-			refs.buyBtn.Text = "???"
-			refs.buyBtn.BackgroundColor3 = COLORS.DarkGray
-			refs.buyBtn.Active = false
-			refs.bargainBtn.Visible = false
-		elseif isSoldOut then
-			refs.buyBtn.Text = "已售罄"
-			refs.buyBtn.BackgroundColor3 = COLORS.DarkGray
-			refs.buyBtn.Active = false
-			refs.bargainBtn.Visible = false
-		elseif not hasMoney then
-			refs.buyBtn.Text = "购买"
-			refs.buyBtn.BackgroundColor3 = COLORS.DarkRed
-			refs.buyBtn.Active = true
-			refs.bargainBtn.Visible = true
-		else
-			refs.buyBtn.Text = "购买"
-			refs.buyBtn.BackgroundColor3 = COLORS.DarkGreen
-			refs.buyBtn.Active = true
-			refs.bargainBtn.Visible = true
-		end
-
-		-- 如果已经砍过价，禁用砍价按钮
-		if bargainState[itemKey] then
-			refs.bargainBtn.Text = "已砍"
-			refs.bargainBtn.BackgroundColor3 = COLORS.DarkGray
-			refs.bargainBtn.Active = false
-		elseif refs.bargainBtn.Visible and not isSoldOut then
-			refs.bargainBtn.Text = "砍价"
-			refs.bargainBtn.BackgroundColor3 = COLORS.Gold
-			refs.bargainBtn.Active = true
-		end
+	-- 重新渲染当前标签页
+	if currentTab == "shop" then
+		ShopUI:RenderItems()
+	else
+		ShopUI:RenderBackpack()
 	end
 end
 
 -- ============================================================
+
+-- ============================================================
+-- 渲染商品列表（紧凑布局）
+-- ============================================================
+function ShopUI:RenderItems()
+	local scroll = uiRefs.scrollFrame
+	if not scroll then return end
+	for _, v in pairs(scroll:GetChildren()) do
+		if v:IsA("Frame") then v:Destroy() end
+	end
+
+	local items = (currentShopData or {}).Items or {}
+	local purchases = (currentShopData or {}).DailyPurchases or {}
+	local y = 5
+	for itemKey, item in pairs(items) do
+		local card = Instance.new("Frame")
+		card.Name = "ItemCard_" .. itemKey
+		card.Size = UDim2.new(1, -10, 0, 62)
+		card.Position = UDim2.new(0, 5, 0, y)
+		card.BackgroundColor3 = COLORS.Bg
+		card.BorderSizePixel = 0
+		card.Parent = scroll
+		local cardCorner = Instance.new("UICorner")
+		cardCorner.CornerRadius = UDim.new(0, 6)
+		cardCorner.Parent = card
+
+		local nameL = Instance.new("TextLabel")
+		nameL.Size = UDim2.new(0, 110, 0, 20)
+		nameL.Position = UDim2.new(0, 6, 0, 2)
+		nameL.BackgroundTransparency = 1
+		nameL.Text = item.Name
+		nameL.TextColor3 = item.IsHidden and COLORS.DarkGray or COLORS.White
+		nameL.TextSize = 14
+		nameL.Font = Enum.Font.SourceSansBold
+		nameL.TextXAlignment = Enum.TextXAlignment.Left
+		nameL.Parent = card
+
+		local descL = Instance.new("TextLabel")
+		descL.Size = UDim2.new(0, 140, 0, 16)
+		descL.Position = UDim2.new(0, 6, 0, 22)
+		descL.BackgroundTransparency = 1
+		if item.IsHidden then
+			descL.Text = "仙晶达到 " .. tostring(item.Price) .. " 后揭晓"
+		else
+			descL.Text = item.Description
+		end
+		descL.TextColor3 = item.IsHidden and COLORS.DarkGray or COLORS.Gray
+		descL.TextSize = 11
+		descL.Font = Enum.Font.SourceSans
+		descL.TextXAlignment = Enum.TextXAlignment.Left
+		descL.Parent = card
+
+		local priceL = Instance.new("TextLabel")
+		priceL.Size = UDim2.new(0, 110, 0, 16)
+		priceL.Position = UDim2.new(0, 6, 0, 38)
+		priceL.BackgroundTransparency = 1
+		priceL.Text = "仙晶 x" .. tostring(item.Price)
+		priceL.TextColor3 = COLORS.Gold
+		priceL.TextSize = 11
+		priceL.Font = Enum.Font.SourceSansBold
+		priceL.TextXAlignment = Enum.TextXAlignment.Left
+		priceL.Parent = card
+
+		-- 限购显示
+		if item.DailyLimit and item.DailyLimit > 0 then
+			local bought = purchases[itemKey] or 0
+			local remaining = item.DailyLimit - bought
+			priceL.Text = priceL.Text .. " | 剩" .. tostring(remaining)
+		end
+
+		-- 购买按钮
+		local buyBtn = Instance.new("TextButton")
+		buyBtn.Name = "BuyBtn_" .. itemKey
+		buyBtn.Size = UDim2.new(0, 58, 0, 24)
+		buyBtn.Position = UDim2.new(0, 125, 0, 3)
+		buyBtn.Text = "购买"
+		buyBtn.TextColor3 = COLORS.White
+		buyBtn.TextSize = 12
+		buyBtn.Font = Enum.Font.SourceSansBold
+		buyBtn.BorderSizePixel = 0
+		buyBtn.Parent = card
+		local buyCorner = Instance.new("UICorner")
+		buyCorner.CornerRadius = UDim.new(0, 4)
+		buyCorner.Parent = buyBtn
+
+		-- 砍价按钮
+		local bargainBtn = Instance.new("TextButton")
+		bargainBtn.Name = "BargainBtn_" .. itemKey
+		bargainBtn.Size = UDim2.new(0, 58, 0, 22)
+		bargainBtn.Position = UDim2.new(0, 125, 0, 29)
+		bargainBtn.Text = "砍价"
+		bargainBtn.TextColor3 = COLORS.White
+		bargainBtn.TextSize = 11
+		bargainBtn.Font = Enum.Font.SourceSansBold
+		bargainBtn.BackgroundColor3 = COLORS.Gold
+		bargainBtn.BorderSizePixel = 0
+		bargainBtn.Parent = card
+		local bargainCorner = Instance.new("UICorner")
+		bargainCorner.CornerRadius = UDim.new(0, 4)
+		bargainCorner.Parent = bargainBtn
+
+		-- 按钮状态
+		local isSoldOut = false
+		if item.DailyLimit and item.DailyLimit > 0 then
+			local bought = purchases[itemKey] or 0
+			if bought >= item.DailyLimit then isSoldOut = true end
+		end
+		local hasMoney = (currentShopData.XianJing or 0) >= item.Price
+
+		if item.IsHidden then
+			buyBtn.Text = "???"; buyBtn.BackgroundColor3 = COLORS.DarkGray; buyBtn.Active = false
+			bargainBtn.Text = "???"; bargainBtn.BackgroundColor3 = COLORS.DarkGray; bargainBtn.Active = false
+		elseif isSoldOut then
+			buyBtn.Text = "已售罄"; buyBtn.BackgroundColor3 = COLORS.DarkGray; buyBtn.Active = false
+			bargainBtn.Visible = false
+		else
+			buyBtn.BackgroundColor3 = hasMoney and COLORS.DarkGreen or COLORS.DarkRed
+			buyBtn.Active = true
+		end
+
+		-- 砍价后显示折后价
+		local bargained = bargainState[itemKey]
+		if bargained and bargained.discounted then
+			bargainBtn.Text = "已砍"; bargainBtn.BackgroundColor3 = COLORS.DarkGray; bargainBtn.Active = false
+			local discountedPrice = math.floor(item.Price * 0.8)
+			priceL.Text = "仙晶 x" .. tostring(item.Price) .. " (" .. tostring(discountedPrice) .. ")"
+			priceL.TextColor3 = COLORS.Green
+		end
+
+		-- 购买点击
+		buyBtn.MouseButton1Click:Connect(function()
+			if not buyBtn.Active then return end
+			buyBtn.Text = "购买中..."; buyBtn.Active = false
+			if ShopEvent then
+				ShopEvent:FireServer("Purchase:Shop", nil, { ItemKey = itemKey })
+			end
+		end)
+
+		-- 砍价点击
+		bargainBtn.MouseButton1Click:Connect(function()
+			if not bargainBtn.Active then return end
+			bargainBtn.Active = false; bargainBtn.Text = "砍价中..."
+			if ShopEvent then
+				ShopEvent:FireServer("Bargain:Shop", nil, { ItemKey = itemKey })
+			end
+		end)
+
+		y = y + 66
+	end
+	scroll.CanvasSize = UDim2.new(0, 0, 0, y + 10)
+end
+
+-- ============================================================
+-- 渲染背包
+-- ============================================================
+function ShopUI:RenderBackpack()
+	local scroll = uiRefs.scrollFrame
+	if not scroll then return end
+	for _, v in pairs(scroll:GetChildren()) do
+		if v:IsA("Frame") then v:Destroy() end
+	end
+
+	local backpack = (currentShopData or {}).Backpack or {}
+	local items = (currentShopData or {}).Items or {}
+	local y = 5
+	for itemKey, count in pairs(backpack) do
+		local item = items[itemKey]
+		if not item then continue end
+		if item.IsHidden then continue end
+
+		local card = Instance.new("Frame")
+		card.Size = UDim2.new(1, -10, 0, 50)
+		card.Position = UDim2.new(0, 5, 0, y)
+		card.BackgroundColor3 = COLORS.Bg
+		card.BorderSizePixel = 0
+		card.Parent = scroll
+		local cardCorner = Instance.new("UICorner")
+		cardCorner.CornerRadius = UDim.new(0, 6)
+		cardCorner.Parent = card
+
+		local nameL = Instance.new("TextLabel")
+		nameL.Size = UDim2.new(0, 120, 0, 20)
+		nameL.Position = UDim2.new(0, 6, 0, 2)
+		nameL.BackgroundTransparency = 1
+		nameL.Text = item.Name .. " x" .. tostring(count)
+		nameL.TextColor3 = COLORS.White
+		nameL.TextSize = 14
+		nameL.Font = Enum.Font.SourceSansBold
+		nameL.TextXAlignment = Enum.TextXAlignment.Left
+		nameL.Parent = card
+
+		local descL = Instance.new("TextLabel")
+		descL.Size = UDim2.new(0, 150, 0, 16)
+		descL.Position = UDim2.new(0, 6, 0, 22)
+		descL.BackgroundTransparency = 1
+		descL.Text = item.Description
+		descL.TextColor3 = COLORS.Gray
+		descL.TextSize = 11
+		descL.Font = Enum.Font.SourceSans
+		descL.TextXAlignment = Enum.TextXAlignment.Left
+		descL.Parent = card
+
+		-- 使用按钮
+		local useBtn = Instance.new("TextButton")
+		useBtn.Size = UDim2.new(0, 58, 0, 28)
+		useBtn.Position = UDim2.new(0, 130, 0, 10)
+		useBtn.Text = "使用"
+		useBtn.TextColor3 = COLORS.White
+		useBtn.TextSize = 12
+		useBtn.Font = Enum.Font.SourceSansBold
+		useBtn.BackgroundColor3 = COLORS.DarkGreen
+		useBtn.BorderSizePixel = 0
+		useBtn.Parent = card
+		local useCorner = Instance.new("UICorner")
+		useCorner.CornerRadius = UDim.new(0, 4)
+		useCorner.Parent = useBtn
+
+		useBtn.MouseButton1Click:Connect(function()
+			useBtn.Text = "使用中..."; useBtn.Active = false
+			if ShopEvent then
+				ShopEvent:FireServer("UseItem:Shop", nil, { ItemKey = itemKey })
+			end
+		end)
+
+		y = y + 54
+	end
+	if y == 5 then
+		local emptyL = Instance.new("TextLabel")
+		emptyL.Size = UDim2.new(1, 0, 0, 40)
+		emptyL.Position = UDim2.new(0, 0, 0, 20)
+		emptyL.BackgroundTransparency = 1
+		emptyL.Text = "背包空空如也"
+		emptyL.TextColor3 = COLORS.Gray
+		emptyL.TextSize = 16
+		emptyL.Font = Enum.Font.SourceSans
+		emptyL.TextXAlignment = Enum.TextXAlignment.Center
+		emptyL.Parent = scroll
+	end
+	scroll.CanvasSize = UDim2.new(0, 0, 0, math.max(y + 10, 60))
+end
+
 -- 结果弹窗
 -- ============================================================
 function ShopUI:CreateResultPopup(parent)
@@ -639,25 +685,26 @@ if ShopEvent then
 			})
 			ShopUI:ShowResult(data.Success, data)
 
-		elseif eventType == "BargainResult:Shop" then
-			-- 隐藏砍价弹窗
-			local popup = screenGui and uiRefs.bargainPopup
-			if popup then
-				popup.Visible = false
-				popup.BackgroundTransparency = 1
-			end
+		elseif eventType == "BargainQuestion" then
+				ShopUI:ShowBargainDialog(data)
 
-			if data.Success then
-				-- 记录砍价成功
-				local itemKey = data.ItemKey
-				if itemKey then
-					bargainState[itemKey] = { discounted = true }
+			elseif eventType == "BargainResult" then
+				local popup = screenGui and uiRefs.bargainPopup
+				if popup then
+					popup.Visible = false
+					popup.BackgroundTransparency = 1
 				end
-				ShopUI:RefreshUI(currentShopData)
-				ShopUI:ShowResult(true, { Message = "老板很开心！给你打 8 折！" })
-			else
-				ShopUI:ShowResult(false, { Message = data.Message or "老板不高兴，还是原价吧" })
-			end
+
+				if data.Success then
+					local itemKey = data.ItemKey
+					if itemKey then
+						bargainState[itemKey] = { discounted = true }
+					end
+					ShopUI:RefreshUI(currentShopData)
+					ShopUI:ShowResult(true, { Message = data.Message or "老板很开心！给你打 8 折！" })
+				else
+					ShopUI:ShowResult(false, { Message = data.Message or "老板不高兴，还是原价吧" })
+				end
 
 		elseif eventType == "ShopClosed" then
 			ShopUI:ShowResult(false, { Message = data.Message or "仙丹阁已打烊" })

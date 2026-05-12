@@ -51,6 +51,7 @@ local DEFAULT_DATA = {
 	-- 新增 — 商店系统
 	DailyPurchases = {},  -- { [itemKey] = count }
 	LastPurchaseReset = 0,
+	Backpack = {},        -- { [itemKey] = count }
 	-- 新增 — 考编 & 天兵
 	IsRecruited = false,   -- 是否已入职天兵
 	Loyalty = 50,          -- 天庭忠诚度 (0-100)

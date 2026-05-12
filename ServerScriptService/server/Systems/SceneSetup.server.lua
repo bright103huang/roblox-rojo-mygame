@@ -752,6 +752,7 @@ local function setupHomeScene()
 		end
 
 		meditating[player.UserId] = true
+		player:SetAttribute("IsMeditating", true)
 		-- 冥想协程
 		task.spawn(function()
 			local maxDuration = 30  -- 最多冥想 30 秒
@@ -785,6 +786,7 @@ local function setupHomeScene()
 					DataManager:UpdateField(player, "Fatigue", data.Fatigue)
 				end
 			end
+			player:SetAttribute("IsMeditating", false)
 			meditating[player.UserId] = nil
 		end)
 	end)
