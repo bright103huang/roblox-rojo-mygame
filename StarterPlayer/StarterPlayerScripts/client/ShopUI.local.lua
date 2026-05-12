@@ -1,6 +1,6 @@
 -- ============================================================
 -- 文件：StarterPlayer.StarterPlayerScripts.Client.ShopUI.client.lua
--- 功能：仙丹阁商店 UI — 触摸 DanShop Part 打开，独立显示
+-- 功能：仙丹阁商店 UI + 砍价对话
 -- 通信：通过 ShopEvent 与服务端交互
 -- ============================================================
 
@@ -27,7 +27,8 @@ end
 local ShopUI = {}
 local screenGui = nil
 local currentShopData = nil
-local itemButtons = {}  -- [itemKey] = { frame, buyBtn, countLabel }
+local itemButtons = {}  -- [itemKey] = { frame, buyBtn, countLabel, bargainBtn }
+local bargainState = {} -- [itemKey] = { discounted = bool }
 
 -- ============================================================
 -- 颜色常量
@@ -51,6 +52,7 @@ local COLORS = {
 function ShopUI:Open(data)
 	currentShopData = data or {}
 	itemButtons = {}
+	bargainState = {}
 	self:CreateUI()
 end
 
@@ -71,7 +73,6 @@ function ShopUI:CreateUI()
 	overlay.BorderSizePixel = 0
 	overlay.Parent = screenGui
 
-	-- 点击遮罩关闭
 	overlay.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
@@ -82,8 +83,8 @@ function ShopUI:CreateUI()
 	-- 主面板
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
-	panel.Size = UDim2.new(0, 400, 0, 450)
-	panel.Position = UDim2.new(0.5, -200, 0.5, -225)
+	panel.Size = UDim2.new(0, 400, 0, 500)
+	panel.Position = UDim2.new(0.5, -200, 0.5, -250)
 	panel.BackgroundColor3 = COLORS.Panel
 	panel.BorderSizePixel = 0
 	panel.Parent = screenGui
@@ -141,7 +142,7 @@ function ShopUI:CreateUI()
 	local gridStartX = 24
 	local gridStartY = 92
 	local slotWidth = 170
-	local slotHeight = 150
+	local slotHeight = 190
 	local gapX = 12
 	local gapY = 12
 	local cols = 2
@@ -203,6 +204,7 @@ function ShopUI:CreateUI()
 
 		-- 价格
 		local priceLabel = Instance.new("TextLabel")
+		priceLabel.Name = "PriceLabel"
 		priceLabel.Size = UDim2.new(1, -4, 0, 20)
 		priceLabel.Position = UDim2.new(0, 2, 0, 48)
 		priceLabel.BackgroundTransparency = 1
@@ -241,16 +243,32 @@ function ShopUI:CreateUI()
 		-- 购买按钮
 		local buyBtn = Instance.new("TextButton")
 		buyBtn.Name = "BuyBtn"
-		buyBtn.Size = UDim2.new(0.85, 0, 0, 34)
-		buyBtn.Position = UDim2.new(0.075, 0, 0, 108)
+		buyBtn.Size = UDim2.new(0.85, 0, 0, 28)
+		buyBtn.Position = UDim2.new(0.075, 0, 0, 95)
 		buyBtn.Text = "购买"
 		buyBtn.TextColor3 = COLORS.White
-		buyBtn.TextSize = 15
+		buyBtn.TextSize = 14
 		buyBtn.Font = Enum.Font.SourceSansBold
 		buyBtn.BorderSizePixel = 0
 		buyBtn.Parent = slot
 
-		-- 检查是否可购买（仙晶足够、未达限购）
+		-- 砍价按钮
+		local bargainBtn = Instance.new("TextButton")
+		bargainBtn.Name = "BargainBtn"
+		bargainBtn.Size = UDim2.new(0.85, 0, 0, 24)
+		bargainBtn.Position = UDim2.new(0.075, 0, 0, 128)
+		bargainBtn.Text = "砍价"
+		bargainBtn.TextColor3 = COLORS.White
+		bargainBtn.TextSize = 12
+		bargainBtn.Font = Enum.Font.SourceSansBold
+		bargainBtn.BackgroundColor3 = COLORS.Gold
+		bargainBtn.BorderSizePixel = 0
+		bargainBtn.Parent = slot
+		local bargainCorner = Instance.new("UICorner")
+		bargainCorner.CornerRadius = UDim.new(0, 6)
+		bargainCorner.Parent = bargainBtn
+
+		-- 检查是否可购买
 		local isSoldOut = false
 		if item.DailyLimit and item.DailyLimit > 0 then
 			local bought = purchases[itemKey] or 0
@@ -264,10 +282,14 @@ function ShopUI:CreateUI()
 			buyBtn.Text = "???"
 			buyBtn.BackgroundColor3 = COLORS.DarkGray
 			buyBtn.Active = false
+			bargainBtn.Text = "???"
+			bargainBtn.BackgroundColor3 = COLORS.DarkGray
+			bargainBtn.Active = false
 		elseif isSoldOut then
 			buyBtn.Text = "已售罄"
 			buyBtn.BackgroundColor3 = COLORS.DarkGray
 			buyBtn.Active = false
+			bargainBtn.Visible = false
 		elseif not hasMoney then
 			buyBtn.BackgroundColor3 = COLORS.DarkRed
 			buyBtn.Active = true
@@ -284,9 +306,20 @@ function ShopUI:CreateUI()
 			if not buyBtn.Active then return end
 			buyBtn.Text = "购买中..."
 			buyBtn.Active = false
-
 			if ShopEvent then
 				ShopEvent:FireServer("Purchase:Shop", nil, {
+					ItemKey = itemKey,
+				})
+			end
+		end)
+
+		-- 砍价按钮点击
+		bargainBtn.MouseButton1Click:Connect(function()
+			if not bargainBtn.Active then return end
+			bargainBtn.Active = false
+			bargainBtn.Text = "砍价中..."
+			if ShopEvent then
+				ShopEvent:FireServer("Bargain:Shop", nil, {
 					ItemKey = itemKey,
 				})
 			end
@@ -296,7 +329,9 @@ function ShopUI:CreateUI()
 		itemButtons[itemKey] = {
 			frame = slot,
 			buyBtn = buyBtn,
+			bargainBtn = bargainBtn,
 			countLabel = countLabel,
+			priceLabel = priceLabel,
 		}
 	end
 
@@ -316,33 +351,128 @@ function ShopUI:CreateUI()
 		self:Close()
 	end)
 
-	-- 存储引用以刷新 UI
+	-- 存储引用
 	screenGui:SetAttribute("_balanceLabel", balanceLabel)
 	screenGui:SetAttribute("_itemButtons", itemButtons)
 
-	-- 结果弹窗
+	-- 结果弹窗 + 砍价弹窗
 	self:CreateResultPopup(panel)
+	self:CreateBargainPopup(panel)
 end
 
--- 刷新 UI 数据（购买后更新余额和限购状态）
+-- ============================================================
+-- 砍价对话弹窗
+-- ============================================================
+function ShopUI:CreateBargainPopup(parent)
+	local frame = Instance.new("Frame")
+	frame.Name = "BargainPopup"
+	frame.Size = UDim2.new(0.9, 0, 0, 200)
+	frame.Position = UDim2.new(0.05, 0, 0, 80)
+	frame.BackgroundColor3 = COLORS.Bg
+	frame.BorderSizePixel = 0
+	frame.BackgroundTransparency = 1
+	frame.Visible = false
+	frame.Parent = parent
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = frame
+
+	local questionLabel = Instance.new("TextLabel")
+	questionLabel.Name = "BargainQuestion"
+	questionLabel.Size = UDim2.new(0.9, 0, 0, 50)
+	questionLabel.Position = UDim2.new(0.05, 0, 0, 10)
+	questionLabel.BackgroundTransparency = 1
+	questionLabel.TextColor3 = COLORS.Gold
+	questionLabel.TextSize = 16
+	questionLabel.Font = Enum.Font.SourceSansBold
+	questionLabel.TextWrapped = true
+	questionLabel.TextXAlignment = Enum.TextXAlignment.Center
+	questionLabel.Parent = frame
+
+	local optionButtons = {}
+	for i = 1, 3 do
+		local btn = Instance.new("TextButton")
+		btn.Name = "Option" .. i
+		btn.Size = UDim2.new(0.85, 0, 0, 34)
+		btn.Position = UDim2.new(0.075, 0, 0, 70 + (i - 1) * 40)
+		btn.TextColor3 = COLORS.White
+		btn.TextSize = 12
+		btn.Font = Enum.Font.SourceSans
+		btn.TextWrapped = true
+		btn.BackgroundColor3 = COLORS.Panel
+		btn.BorderSizePixel = 0
+		btn.Parent = frame
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 6)
+		btnCorner.Parent = btn
+		optionButtons[i] = btn
+	end
+
+	screenGui:SetAttribute("_bargainPopup", frame)
+	screenGui:SetAttribute("_bargainQuestion", questionLabel)
+	screenGui:SetAttribute("_bargainOptions", optionButtons)
+end
+
+function ShopUI:ShowBargainDialog(data)
+	local popup = screenGui and screenGui:GetAttribute("_bargainPopup")
+	local questionLabel = screenGui and screenGui:GetAttribute("_bargainQuestion")
+	local optionButtons = screenGui and screenGui:GetAttribute("_bargainOptions")
+	if not popup or not questionLabel or not optionButtons then return end
+
+	-- 隐藏结果弹窗
+	local resultPopup = screenGui and screenGui:GetAttribute("_resultPopup")
+	if resultPopup then
+		resultPopup.Visible = false
+		resultPopup.BackgroundTransparency = 1
+	end
+
+	popup.Visible = true
+	popup.BackgroundTransparency = 0
+	questionLabel.Text = "👴 " .. (data.Question or "")
+
+	local pendingItemKey = data.ItemKey
+	for i, btn in ipairs(optionButtons) do
+		local optionText = (data.Options or {})[i]
+		if optionText then
+			btn.Text = tostring(i) .. ". " .. optionText
+			btn.Visible = true
+			btn.Active = true
+			btn.BackgroundColor3 = COLORS.Panel
+			btn.MouseButton1Click:Connect(function()
+				-- Disable all buttons
+				for _, b in ipairs(optionButtons) do
+					b.Active = false
+				end
+				if ShopEvent and pendingItemKey then
+					ShopEvent:FireServer("Bargain:Shop", nil, {
+						ItemKey = pendingItemKey,
+						ChoiceIndex = data.QuestionId,
+					})
+				end
+			end)
+		else
+			btn.Visible = false
+		end
+	end
+end
+
+-- ============================================================
+-- 刷新 UI
+-- ============================================================
 function ShopUI:RefreshUI(data)
 	if not screenGui then return end
-
 	currentShopData = data
 
-	-- 更新余额
 	local balanceLabel = screenGui:GetAttribute("_balanceLabel")
 	if balanceLabel then
 		balanceLabel.Text = "仙晶：" .. tostring(data.XianJing or 0)
 	end
 
-	-- 更新商品按钮状态
 	local purchases = data.DailyPurchases or {}
 	for itemKey, refs in pairs(itemButtons) do
 		local item = (data.Items or {})[itemKey]
 		if not item then continue end
 
-		-- 限购显示
 		if item.DailyLimit and item.DailyLimit > 0 then
 			local bought = purchases[itemKey] or 0
 			local remaining = item.DailyLimit - bought
@@ -354,7 +484,6 @@ function ShopUI:RefreshUI(data)
 			end
 		end
 
-		-- 按钮状态
 		local isSoldOut = false
 		if item.DailyLimit and item.DailyLimit > 0 then
 			local bought = purchases[itemKey] or 0
@@ -364,27 +493,55 @@ function ShopUI:RefreshUI(data)
 		end
 		local hasMoney = (data.XianJing or 0) >= item.Price
 
+		-- 如果已砍价成功，显示折后价
+		local bargained = bargainState[itemKey]
+		if bargained and bargained.discounted then
+			local discountedPrice = math.floor(item.Price * 0.8)
+			refs.priceLabel.Text = "仙晶 x" .. tostring(item.Price) .. " → (" .. tostring(discountedPrice) .. ")"
+			refs.priceLabel.TextColor3 = COLORS.Green
+		else
+			refs.priceLabel.Text = "仙晶 x" .. tostring(item.Price)
+			refs.priceLabel.TextColor3 = COLORS.Gold
+		end
+
 		if item.IsHidden then
 			refs.buyBtn.Text = "???"
 			refs.buyBtn.BackgroundColor3 = COLORS.DarkGray
 			refs.buyBtn.Active = false
+			refs.bargainBtn.Visible = false
 		elseif isSoldOut then
 			refs.buyBtn.Text = "已售罄"
 			refs.buyBtn.BackgroundColor3 = COLORS.DarkGray
 			refs.buyBtn.Active = false
+			refs.bargainBtn.Visible = false
 		elseif not hasMoney then
 			refs.buyBtn.Text = "购买"
 			refs.buyBtn.BackgroundColor3 = COLORS.DarkRed
 			refs.buyBtn.Active = true
+			refs.bargainBtn.Visible = true
 		else
 			refs.buyBtn.Text = "购买"
 			refs.buyBtn.BackgroundColor3 = COLORS.DarkGreen
 			refs.buyBtn.Active = true
+			refs.bargainBtn.Visible = true
+		end
+
+		-- 如果已经砍过价，禁用砍价按钮
+		if bargainState[itemKey] then
+			refs.bargainBtn.Text = "已砍"
+			refs.bargainBtn.BackgroundColor3 = COLORS.DarkGray
+			refs.bargainBtn.Active = false
+		elseif refs.bargainBtn.Visible and not isSoldOut then
+			refs.bargainBtn.Text = "砍价"
+			refs.bargainBtn.BackgroundColor3 = COLORS.Gold
+			refs.bargainBtn.Active = true
 		end
 	end
 end
 
--- 创建结果弹窗
+-- ============================================================
+-- 结果弹窗
+-- ============================================================
 function ShopUI:CreateResultPopup(parent)
 	local resultFrame = Instance.new("Frame")
 	resultFrame.Name = "ResultPopup"
@@ -424,7 +581,6 @@ function ShopUI:CreateResultPopup(parent)
 	screenGui:SetAttribute("_resultMsg", resultMessage)
 end
 
--- 显示购买结果
 function ShopUI:ShowResult(success, data)
 	local resultPopup = screenGui and screenGui:GetAttribute("_resultPopup")
 	local resultTitle = screenGui and screenGui:GetAttribute("_resultTitle")
@@ -435,18 +591,17 @@ function ShopUI:ShowResult(success, data)
 	resultPopup.BackgroundTransparency = 0
 
 	if success then
-		resultTitle.Text = "购买成功"
+		resultTitle.Text = "✅ 购买成功"
 		resultTitle.TextColor3 = COLORS.Green
 		resultMsg.Text = data.Message or ""
 		resultMsg.TextColor3 = COLORS.Gold
 	else
-		resultTitle.Text = "购买失败"
+		resultTitle.Text = "❌ 购买失败"
 		resultTitle.TextColor3 = COLORS.Red
 		resultMsg.Text = data.Message or ""
 		resultMsg.TextColor3 = COLORS.Gray
 	end
 
-	-- 3 秒后自动关闭结果弹窗
 	task.delay(3, function()
 		if resultPopup then
 			resultPopup.Visible = false
@@ -455,6 +610,9 @@ function ShopUI:ShowResult(success, data)
 	end)
 end
 
+-- ============================================================
+-- 关闭
+-- ============================================================
 function ShopUI:Close()
 	if screenGui then
 		screenGui:Destroy()
@@ -462,74 +620,118 @@ function ShopUI:Close()
 	end
 	currentShopData = nil
 	itemButtons = {}
+	bargainState = {}
 end
 
 -- ============================================================
 -- 监听远程事件
 -- ============================================================
-
--- 监听打开商店
 if ShopEvent then
 	ShopEvent.OnClientEvent:Connect(function(eventType, data)
 		if eventType == "OpenShop" then
 			ShopUI:Open(data)
 
 		elseif eventType == "PurchaseResult:Shop" then
-			-- 先刷新 UI
 			ShopUI:RefreshUI({
 				Items = (currentShopData or {}).Items or {},
 				DailyPurchases = data.DailyPurchases or {},
 				XianJing = data.XianJing or 0,
 			})
-			-- 再显示结果
 			ShopUI:ShowResult(data.Success, data)
+
+		elseif eventType == "BargainResult:Shop" then
+			-- 隐藏砍价弹窗
+			local popup = screenGui and screenGui:GetAttribute("_bargainPopup")
+			if popup then
+				popup.Visible = false
+				popup.BackgroundTransparency = 1
+			end
+
+			if data.Success then
+				-- 记录砍价成功
+				local itemKey = data.ItemKey
+				if itemKey then
+					bargainState[itemKey] = { discounted = true }
+				end
+				ShopUI:RefreshUI(currentShopData)
+				ShopUI:ShowResult(true, { Message = "老板很开心！给你打 8 折！" })
+			else
+				ShopUI:ShowResult(false, { Message = data.Message or "老板不高兴，还是原价吧" })
+			end
+
+		elseif eventType == "ShopClosed" then
+			ShopUI:ShowResult(false, { Message = data.Message or "仙丹阁已打烊" })
 		end
 	end)
 end
 
 -- ============================================================
--- 绑定 DanShop Part 触摸事件
--- 当玩家触摸到名为 "DanShop" 的 Part 时，发送 Pick:Shop
+-- 绑定触摸事件
 -- ============================================================
-local function bindDanShopTouch()
+local function bindShopTouch()
 	local debounce = false
 	local debounceTime = 0.5
 
-	local function bindPart(part)
-		if part.Name ~= "DanShop" then return end
-		if part:FindFirstChild("_ShopBound") then return end
-
-		local boundMarker = Instance.new("BoolValue")
-		boundMarker.Name = "_ShopBound"
-		boundMarker.Parent = part
-
-		part.Touched:Connect(function(hit)
-			if not player.Character then return end
-			if hit.Parent ~= player.Character then return end
-			if debounce then return end
-			debounce = true
-
-			print("🏪 进入仙丹阁")
-			if ShopEvent then
-				ShopEvent:FireServer("Pick:Shop")
-			end
-
-			task.wait(debounceTime)
-			debounce = false
-		end)
+	local function firePickShop()
+		if debounce then return end
+		debounce = true
+		if ShopEvent then
+			ShopEvent:FireServer("Pick:Shop")
+		end
+		task.wait(debounceTime)
+		debounce = false
 	end
 
-	-- 扫描现有 Part
+	local function bindPart(part)
+		if part.Name == "DanShop" then
+			if part:FindFirstChild("_ShopBound") then return end
+			local boundMarker = Instance.new("BoolValue")
+			boundMarker.Name = "_ShopBound"
+			boundMarker.Parent = part
+			part.Touched:Connect(function(hit)
+				if not player.Character then return end
+				if hit.Parent ~= player.Character then return end
+				firePickShop()
+			end)
+		end
+	end
+
+	local function bindShopkeeper()
+		-- Find the Shopkeeper model in workspace
+		local model = Workspace:FindFirstChild("Shopkeeper")
+		if not model then return end
+		for _, child in ipairs(model:GetDescendants()) do
+			if child:IsA("BasePart") and child.Name ~= "ShopkeeperRoot" then
+				if child:FindFirstChild("_ShopBound") then return end
+				local boundMarker = Instance.new("BoolValue")
+				boundMarker.Name = "_ShopBound"
+				boundMarker.Parent = child
+				child.Touched:Connect(function(hit)
+					if not player.Character then return end
+					if hit.Parent ~= player.Character then return end
+					firePickShop()
+				end)
+			end
+		end
+	end
+
+	-- 绑定 DanShop 区域
 	for _, v in pairs(Workspace:GetDescendants()) do
 		if v:IsA("Part") then
 			bindPart(v)
 		end
 	end
-
-	-- 监听新加入的 Part
 	Workspace.DescendantAdded:Connect(function(v)
 		if v:IsA("Part") then
 			bindPart(v)
+		end
+	end)
+
+	-- 绑定掌柜 NPC
+	bindShopkeeper()
+	Workspace.DescendantAdded:Connect(function(v)
+		if v:IsA("Model") and v.Name == "Shopkeeper" then
+			bindShopkeeper()
 		end
 	end)
 end
@@ -537,9 +739,9 @@ end
 -- ============================================================
 -- 启动
 -- ============================================================
-task.wait(2)  -- 等待场景加载
-bindDanShopTouch()
+task.wait(2)
+bindShopTouch()
 
-print("🏪 ShopUI 已启动")
+print("🏪 ShopUI 已启动（含砍价）")
 
 return ShopUI
