@@ -1,4 +1,4 @@
-return nil
+do return nil end
 -- 已废弃：引导提示牌已改用 SceneSetup 中的 createHintBoard 3D 漂浮牌
 
 -- ============================================================

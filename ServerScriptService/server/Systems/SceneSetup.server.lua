@@ -250,13 +250,8 @@ local function setupYiShanFangScene()
 		BrickColor.new("Bright yellow")
 	)
 	createHintBoard(
-		origin + Vector3.new(0, 4, 0),
-		"② 跟着 ⭐ 走，别问为什么，问就是编制",
-		BrickColor.new("Bright red")
-	)
-	createHintBoard(
 		origin + Vector3.new(50, 4, 0),
-		"③ 送到即结算——干得好加鸡腿，干不好……你懂的",
+		"② 送到即结算——干得好加鸡腿，干不好……你懂的",
 		BrickColor.new("Bright green")
 	)
 

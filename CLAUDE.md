@@ -9,133 +9,15 @@
 
 ---
 
-## 协作模式：你 ↔ 我 ↔ 仙官司
+## 协作模式
 
 > **你提想法，我来调度，给你结果。**
-> 你不需要记哪个 agent 做什么、谁先谁后、怎么调——交给我协调。
-
-### 标准协作流水线
-
-```
-你: "我想加一个新功能 / 修一个 Bug / 改一个系统"
-  │
-  ▼
-我（总接口）
-  │  ① 先调 skills（查已有→find-skills→加载）
-  │  ② 判断范围，调度子代理
-  │
-  ├─▶ 灵感司 — 大型新功能需求设计（需要时）
-  ├─▶ 执行司 — 一次性完成 Config+服务端+客户端改动
-  ├─▶ 查察司 — 代码审查与一致性检查
-  └─▶ 诊察司 — Bug 定位与修复（需要时）
-  │
-  ▼
-你: 收到可用成果
-```
-
-### 具体走法
 
 1. **你告诉我想法** — "加个钓鱼玩法"、"修这个 Bug"、"数值要调整"
-2. **我来判断调度** — 分析范围，决定调哪个司、按什么顺序、能不能并行
+2. **我来判断调度** — 分析范围，决定顺序，能不能并行
 3. **中间问你** — 需要你做决策时才问你（选方案、定数值、确认样式）
 4. **交付成果** — 代码改好、提交完成、告诉你做了什么
 
----
-
-## 三步工作法（Skills 调用铁律）
-
-> **做任何事前必须先走完三步：①查已有 skills → ②不够就 find-skills → ③带上再工作。**
-
-这是我（主代理）和所有子代理都必须遵守的纪律，不是可选项。
-
-### 主代理三步走
-
-每次接到任务后、动手前：
-
-1. **查 skills 列表** — 扫描当前会话中的 skills 列表，选出所有可能相关的 skill
-2. **没有合适的？调 `find-skills`** — 如果现有 skills 没有覆盖当前任务的，先调 `find-skills` 搜索安装
-3. **加载 skill 再开工** — 调 Skill tool 加载选中的技能，然后才开始干活（读代码、问问题、设计方案都不算"干活"）
-
-### 派发子代理时的要求
-
-在 sub-agent 的 prompt 末尾必须加上：
-
-> 开始工作前，请先调用以下 skill(s)：[skill1], [skill2]
-
-### 仙官司对应的必选 skills
-
-| 司 | 必调 skills |
-|---|-----------|
-| 灵感司 | `brainstorming` |
-| 执行司 | `roblox-game-development` |
-| 查察司 | `systematic-debugging` + `roblox-game-development` |
-| 诊察司 | `systematic-debugging` + `roblox-game-development` |
-
----
-
-## 仙官司体系（AI 子代理）
-
-### 四司精简架构
-
-| 仙官司 | Agent ID | 触发条件 | 职责 |
-|--------|----------|---------|------|
-| 灵感司 | `inspiration` | 大型新功能 | 需求探讨、方案设计、输出设计文档 |
-| 执行司 | `executor` | 日常功能开发 | 一次性完成 Config + 服务端逻辑 + 客户端 UI |
-| 查察司 | `qa-inspector` | 每次改动后 | 代码审查、架构一致性、质量把关 |
-| 诊察司 | `diagnostician` | Bug 修复 | 系统化定位、根因分析、修复验证 |
-
-### 我做主（不派子代理）
-
-以下工作我直接做，不需要子代理 handoff：
-
-- **日常改 Config**（StatsConfig、TaskConfig 等微调）
-- **修简单 Bug**（单文件、逻辑明确的）
-- **架构决策**（项目方向、模块划分）
-- **审阅设计文档**（灵感司产出我来审核）
-- **git 提交**（版本管理）
-
-### 各司职责
-
-各司被调度时，必须遵守"三步工作法"（查 skills → find-skills → 加载再开工），并在子代理 prompt 末尾注明需要调用的 skills。
-
-**灵感司** — 动工前的第一步（调 `brainstorming` skill）
-- 与你探讨需求，一次只问一个问题
-- 提出 2-3 种方案并推荐
-- 输出设计文档到 `docs/designs/`
-- 不写代码，只出方案
-- 终点：设计文档获批
-
-**执行司** — 合并原数据/任务/界面三司（调 `roblox-game-development` skill）
-- 改 Config：StatsConfig、TaskConfig、EconomyConfig、DataManager 字段
-- 写服务端：Task Handler 处理器（OnPlayerPickup/Drop/Craft/Attack）
-- 写客户端：纯 Luau UI（Instance.new，无 Roact）
-- 一次性完成，不拆分 handoff
-- 注意文件后缀规则：`.local.lua` / `.lua` / `.server.lua`
-
-**查察司** — 质量门（调 `roblox-game-development` + `systematic-debugging` skill）
-- 文件后缀与 RunContext 检查
-- `.` vs `:` 调用约定检查
-- 跨文件引用一致性（RewardType、HandlerModule 路径等）
-- DataManager 字段完整性
-- 循环依赖检查
-
-**诊察司** — Bug 猎人（调 `systematic-debugging` + `roblox-game-development` skill）
-- 四阶段工作法：根因调查 → 模式分析 → 假设验证 → 修复
-- 不找到根因不准提修复方案
-- 连续 3 次假设失败 → 重新审视架构
-
-### 标准调度流程
-
-每一步启动 sub-agent 前，我都按"三步工作法"在 prompt 中指定该司需要加载的 skills。
-
-```
-日常小改动: 我直接改（走三步工作法）→ 查察司审查
-中型功能:   执行司实现（加载 roblox-game-development）→ 查察司审查
-大型功能:   灵感司设计（加载 brainstorming）→ 我审阅 → 执行司实现 → 查察司审查
-Bug修复:    诊察司定位（加载 systematic-debugging + roblox-game-development）→ 执行司修复（或我直接修）→ 诊察司验证
-```
-
----
 
 ## 2D 横版游戏设计
 
