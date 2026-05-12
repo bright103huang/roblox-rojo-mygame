@@ -34,6 +34,116 @@ end
 
 local ShopService = {}
 
+-- ============================================================
+-- 砍价对话题库
+-- ============================================================
+local BARGAIN_QUESTIONS = {
+	{
+		Question = "我这丹可都是太上老君亲传的配方，贵自然有贵的道理！",
+		Options = { "那是那是，老板一看就是高人！", "少吹牛了，便宜点", "隔壁也卖这个价" },
+		Correct = 1,
+	},
+	{
+		Question = "你天天来砍价，我生意还做不做了？",
+		Options = { "我这是给你带人气啊", "不卖拉倒", "下次我给你介绍客户" },
+		Correct = 1, CorrectAlt = 3,
+	},
+	{
+		Question = "这玉灵丹成本高，真的不能再低了",
+		Options = { "老板实诚人，那我多买几颗", "成本高是你的事", "你再降点嘛" },
+		Correct = 1,
+	},
+	{
+		Question = "我看你面生，是第一次来吧？",
+		Options = { "慕名而来！都说您这丹药正宗", "第一次就不能打折？", "你管我第几次" },
+		Correct = 1,
+	},
+	{
+		Question = "这价格已经是最低价了",
+		Options = { "就冲您这爽快劲儿，我再加购一颗", "少来这套", "求求你了老板" },
+		Correct = 1,
+	},
+	{
+		Question = "你上次砍价成功，我亏了不少",
+		Options = { "那说明您人好，好人会有好报的！", "你亏不亏关我啥事", "那你这次涨回去不就得了" },
+		Correct = 1,
+	},
+	{
+		Question = "我看你身上有妖气，刚从妖兽战场来吧？",
+		Options = { "老板好眼力！所以需要丹药补补", "少打听", "你怎么知道" },
+		Correct = 1,
+	},
+	{
+		Question = "你知道我这丹药用什么炼的吗？百年灵芝！",
+		Options = { "难怪灵气这么足，值这个价！", "百年？你骗谁呢", "那更该便宜点啦" },
+		Correct = 1,
+	},
+	{
+		Question = "我这店小本经营，你再砍价我要去喝西北风了",
+		Options = { "老板说笑了，您这店气派得很", "那你去喝吧", "我也穷啊" },
+		Correct = 1,
+	},
+	{
+		Question = "你旁边那位昨天也来砍价了",
+		Options = { "那更说明您这店受欢迎啊！", "他买多少我不管", "他人怎么样" },
+		Correct = 1,
+	},
+	{
+		Question = "这丹药吃了能延年益寿，绝对值这个价",
+		Options = { "那我更要买了，健康无价！", "延年益寿？骗鬼呢", "能延多少年" },
+		Correct = 1,
+	},
+	{
+		Question = "你要真想买，我送你一句忠告",
+		Options = { "老板请讲，洗耳恭听！", "别啰嗦了", "你送丹药更实在" },
+		Correct = 1,
+	},
+}
+
+-- ============================================================
+-- 砍价状态（每个玩家每次面板打开期间的砍价记录）
+-- ============================================================
+local pendingBargains = {}
+
+function ShopService:HandleBargain(player, itemKey, choiceIndex)
+	local data = DataManager:GetData(player)
+	if not data then return { Success = false, Message = "数据未加载" } end
+	local item = DanConfig.Items[itemKey]
+	if not item then return { Success = false, Message = "未知商品" } end
+
+	-- 没传 choiceIndex = 客户端请求题目
+	if not choiceIndex then
+		local qId = math.random(1, #BARGAIN_QUESTIONS)
+		local q = BARGAIN_QUESTIONS[qId]
+		return { Success = true, Question = q.Question, Options = q.Options, QuestionId = qId }
+	end
+
+	local q = BARGAIN_QUESTIONS[choiceIndex]
+	if not q then return { Success = false, Message = "无效选项" } end
+
+	local isCorrect = (choiceIndex == q.Correct) or (q.CorrectAlt and choiceIndex == q.CorrectAlt)
+	if isCorrect then
+		local uid = player.UserId
+		if not pendingBargains[uid] then pendingBargains[uid] = {} end
+		pendingBargains[uid][itemKey] = true
+		return { Success = true, Message = "老板很开心！给你打 8 折！" }
+	else
+		return { Success = false, Message = "老板不高兴，还是原价吧" }
+	end
+end
+
+function ShopService:GetBargainDiscount(player, itemKey)
+	local uid = player.UserId
+	if pendingBargains[uid] and pendingBargains[uid][itemKey] then
+		return 0.8
+	end
+	return 1.0
+end
+
+function ShopService:ClearBargains(player)
+	pendingBargains[player.UserId] = nil
+end
+
 -- 查询玩家的当日已购次数（自动执行限购刷新检查）
 function ShopService:GetDailyPurchases(player)
 	local data = DataManager:GetData(player)
@@ -91,13 +201,18 @@ function ShopService:Purchase(player, itemKey)
 
 	-- 检查仙晶
 	local xianJing = data.XianJing or 0
-	if xianJing < item.Price then
-		return "InsufficientFunds", "仙晶不足（需要 " .. tostring(item.Price) .. "）"
+	local discount = ShopService:GetBargainDiscount(player, itemKey)
+	local finalPrice = math.floor(item.Price * discount)
+	if xianJing < finalPrice then
+		return "InsufficientFunds", "仙晶不足（需要 " .. tostring(finalPrice) .. "）"
 	end
 
-	-- 扣除仙晶
-	data.XianJing = xianJing - item.Price
+	-- 扣除仙晶（折后价）
+	data.XianJing = xianJing - finalPrice
 	DataManager:UpdateField(player, "XianJing", data.XianJing)
+	if discount < 1 then
+		print("💰 " .. player.Name .. " 砍价成功！" .. (item.RealName or item.Name) .. " $" .. item.Price .. "→" .. finalPrice)
+	end
 
 	-- 更新购买次数
 	if item.DailyLimit and item.DailyLimit > 0 then
@@ -163,6 +278,7 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		end
 
 		-- 检查限购刷新
+t	ShopService:ClearBargains(player)
 		ShopService:CheckReset(player, data)
 
 		-- 朦胧机制：检查并更新已揭晓的丹药
@@ -232,6 +348,24 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			Message = message,
 			XianJing = data and data.XianJing or 0,
 			DailyPurchases = data and data.DailyPurchases or {},
+		})
+		return
+	end
+
+	-- 砍价
+	if action == "Bargain:Shop" then
+		local itemKey = contextData and contextData.ItemKey
+		local choiceIndex = contextData and contextData.ChoiceIndex
+		if not itemKey then return end
+
+		local result = ShopService:HandleBargain(player, itemKey, choiceIndex)
+
+		ShopEvent:FireClient(player, "BargainResult:Shop", {
+			Success = result.Success,
+			Message = result.Message,
+			Question = result.Question,
+			Options = result.Options,
+			QuestionId = result.QuestionId,
 		})
 		return
 	end
