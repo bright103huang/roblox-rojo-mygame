@@ -677,6 +677,16 @@ local function setupShopScene()
 		createDecor(origin + Vector3.new(0, -0.25, z), Vector3.new(78, 0.05, 0.1), BrickColor.new("Dark grey"))
 	end
 
+	-- ============================================================
+	-- 场景引导提示
+	-- ============================================================
+	createHintBoard(origin + Vector3.new(-3, 5, 0),
+		"① 触碰掌柜 → 打开丹药铺",
+		BrickColor.new("Gold"))
+	createHintBoard(origin + Vector3.new(10, 5, 0),
+		"② 点击「砍价」按钮可议价",
+		BrickColor.new("Bright blue"))
+
 	print("💎 仙丹阁已就绪（宽敞大气版）")
 end
 
