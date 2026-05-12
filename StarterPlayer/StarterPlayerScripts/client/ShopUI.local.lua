@@ -618,7 +618,6 @@ function ShopUI:Close()
 		screenGui:Destroy()
 		screenGui = nil
 	end
-	currentShopData = nil
 	itemButtons = {}
 	bargainState = {}
 end
