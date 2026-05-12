@@ -735,6 +735,40 @@ local function bindShopTouch()
 		end
 	end)
 end
+-- ============================================================
+-- 可靠轮询触发器（替代 Touched，防止物理引擎漏检）
+-- ============================================================
+task.spawn(function()
+	local zone = workspace:FindFirstChild("DanShop")
+	if not zone then
+		-- 等场景同步
+		local waited = 0
+		while not zone and waited < 30 do
+			task.wait(1)
+			zone = workspace:FindFirstChild("DanShop")
+			waited += 1
+		end
+		if not zone then return end
+	end
+	local lastTrigger = 0
+	while zone and zone.Parent do
+		task.wait(0.3)
+		local char = player.Character
+		if not char then continue end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then continue end
+		local dist = (root.Position - zone.Position).Magnitude
+		if dist < 4 then
+			local now = os.clock()
+			if now - lastTrigger > 1 then
+				lastTrigger = now
+				if ShopEvent then
+					ShopEvent:FireServer("Pick:Shop")
+				end
+			end
+		end
+	end
+end)
 
 -- ============================================================
 -- 启动

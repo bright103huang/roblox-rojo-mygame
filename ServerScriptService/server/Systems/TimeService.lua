@@ -50,7 +50,7 @@ end
 -- ============================================================
 -- 状态
 -- ============================================================
-local currentGameHour = 6  -- 从卯时（6:00）开始
+local currentGameHour = 12  -- 从未时（12:00）开始，商店立即营业
 local isNight = false
 local lastMidnightTick = 0  -- 防止重复结算
 local lastHourLabel = ""      -- 上一次广播的时辰标签
