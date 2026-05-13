@@ -62,6 +62,19 @@ local function createWall(position, sizeX, sizeY, sizeZ, color)
 	return part
 end
 
+local function createInvisibleWall(position, sizeX, sizeY, sizeZ)
+	local part = Instance.new("Part")
+	part.Name = "EdgeWall"
+	part.Size = Vector3.new(sizeX, sizeY, sizeZ)
+	part.Position = position
+	part.Anchored = true
+	part.CanCollide = true
+	part.Transparency = 1
+	part.Material = Enum.Material.SmoothPlastic
+	part.Parent = workspace
+	return part
+end
+
 local function createPillar(position, height, color)
 	local part = Instance.new("Part")
 	part.Name = "Pillar"
@@ -406,6 +419,10 @@ local function setupAlchemyScene()
 		label.Font = Enum.Font.SourceSans
 	end
 
+	-- 不可见边缘碰撞墙（防止走出地板掉入虚空）
+	createInvisibleWall(origin + Vector3.new(-25, 2, 0), 0.3, 8, 8)   -- 左墙，地板边缘 X=-25
+	createInvisibleWall(origin + Vector3.new(25, 2, 0), 0.3, 8, 8)    -- 右墙，地板边缘 X=25
+
 	print("⚗️ 炼丹洞天已就绪（丹炉: x=0, 灵草台: x=-10, 柴火堆: x=10）")
 end
 
@@ -526,19 +543,8 @@ local function setupBeastScene()
 	-- ============================================================
 	-- 边缘防掉落碰撞墙（不可见）
 	-- ============================================================
-	local leftEdge = Instance.new("Part")
-	leftEdge.Name = "BeastEdgeWall"
-	leftEdge.Size = Vector3.new(0.5, 8, 16)
-	leftEdge.Position = origin + Vector3.new(-64, 4, 0)
-	leftEdge.Anchored = true; leftEdge.CanCollide = true; leftEdge.Transparency = 1
-	leftEdge.Parent = workspace
-
-	local rightEdge = Instance.new("Part")
-	rightEdge.Name = "BeastEdgeWall"
-	rightEdge.Size = Vector3.new(0.5, 8, 16)
-	rightEdge.Position = origin + Vector3.new(64, 4, 0)
-	rightEdge.Anchored = true; rightEdge.CanCollide = true; rightEdge.Transparency = 1
-	rightEdge.Parent = workspace
+	createInvisibleWall(origin + Vector3.new(-70, 2, 0), 0.3, 8, 12)   -- 左墙，地板边缘 X=-70
+	createInvisibleWall(origin + Vector3.new(70, 2, 0), 0.3, 8, 12)    -- 右墙，地板边缘 X=70
 
 	-- ============================================================
 	-- 妖兽生成台（交互区域，Z=0）
@@ -693,6 +699,10 @@ local function setupShopScene()
 	createHintBoard(origin + Vector3.new(10, 5, 0),
 		"② 点击「砍价」按钮可议价",
 		BrickColor.new("Bright blue"))
+
+	-- 不可见边缘碰撞墙（防止走出地板掉入虚空）
+	createInvisibleWall(origin + Vector3.new(-40, 2, 0), 0.3, 8, 8)   -- 左墙，地板边缘 X=-40
+	createInvisibleWall(origin + Vector3.new(40, 2, 0), 0.3, 8, 8)    -- 右墙，地板边缘 X=40
 
 	print("💎 仙丹阁已就绪（宽敞大气版）")
 end
