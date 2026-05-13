@@ -115,8 +115,8 @@ function ShopService:RequestBargainQuestion(player, itemKey)
 	return { Question = q.Question, Options = q.Options, QuestionId = qId }
 end
 
-function ShopService:SubmitBargainAnswer(player, itemKey, choiceIndex)
-	local q = BARGAIN_QUESTIONS[choiceIndex]
+function ShopService:SubmitBargainAnswer(player, itemKey, questionId, chosenOption)
+	local q = BARGAIN_QUESTIONS[questionId]
 	if not q then return { Success = false, Message = "无效选项" } end
 
 	local uid = player.UserId
@@ -124,7 +124,7 @@ function ShopService:SubmitBargainAnswer(player, itemKey, choiceIndex)
 		return { Success = false, Message = "已砍过价了" }
 	end
 
-	local isCorrect = (choiceIndex == q.Correct) or (q.CorrectAlt and choiceIndex == q.CorrectAlt)
+	local isCorrect = (chosenOption == q.Correct) or (q.CorrectAlt and chosenOption == q.CorrectAlt)
 	if not pendingBargains[uid] then pendingBargains[uid] = {} end
 	if isCorrect then
 		pendingBargains[uid][itemKey] = true
@@ -372,6 +372,7 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			Message = message,
 			XianJing = data and data.XianJing or 0,
 			DailyPurchases = data and data.DailyPurchases or {},
+				Backpack = data and data.Backpack or {},
 		})
 		return
 	end
@@ -402,7 +403,11 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			})
 		else
 			-- Step 2: 提交答案
-			local result = ShopService:SubmitBargainAnswer(player, itemKey, choiceIndex)
+			local questionId = contextData and contextData.QuestionId
+			if not questionId then
+				questionId = choiceIndex -- 兼容旧客户端
+			end
+			local result = ShopService:SubmitBargainAnswer(player, itemKey, questionId, choiceIndex)
 			ShopEvent:FireClient(player, "BargainResult", {
 				Success = result.Success,
 				Message = result.Message,

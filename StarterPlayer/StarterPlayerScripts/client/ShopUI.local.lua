@@ -314,7 +314,8 @@ function ShopUI:ShowBargainDialog(data)
 				if ShopEvent and pendingItemKey then
 					ShopEvent:FireServer("Bargain:Shop", nil, {
 						ItemKey = pendingItemKey,
-						ChoiceIndex = data.QuestionId,
+						ChoiceIndex = i,
+						QuestionId = data.QuestionId,
 					})
 				end
 			end)
@@ -682,6 +683,7 @@ if ShopEvent then
 				Items = (currentShopData or {}).Items or {},
 				DailyPurchases = data.DailyPurchases or {},
 				XianJing = data.XianJing or 0,
+				Backpack = data.Backpack or {},
 			})
 			ShopUI:ShowResult(data.Success, data)
 
