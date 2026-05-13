@@ -1,6 +1,14 @@
 -- tests/run.lua
 -- 轻量 Luau 测试框架 + 测试入口
 -- 用法: luau tests/run.lua（在项目根目录执行）
+-- ====== 子代理 TDD 模板 ======
+-- 如何为你的模块写测试：
+-- 1. 将业务逻辑提取为纯函数（不依赖 Roblox API）
+-- 2. 在文件底部追加 describe/it 测试块
+-- 3. 运行验证: luau tests/run.lua
+-- 4. 先写测试（RED）→ 验证失败 → 实现逻辑（GREEN）
+-- 5. 参考下方 StatusService 测试区（第 ~197 行）的提取模式
+-- ============================
 
 -- ====== 框架核心 ======
 local results = { passed = 0, failed = 0, errors = {} }
