@@ -95,6 +95,15 @@ function AlchemyTask.OnPlayerDrop(player, _area)
 		return false, "NeedHerbFirst"
 	end
 
+	-- 防御：如果 step 已 >= 3 但 craft 没执行（异常状态），重置
+	if (alchemyStep[userId] or 0) >= 3 then
+		warn("AlchemyTask: " .. player.Name .. " 异常状态 alchemyStep=" .. tostring(alchemyStep[userId]) .. "，重置")
+		alchemyStep[userId] = nil
+		hasHerb[userId] = nil
+		player:SetAttribute("AlchemyStep", nil)
+		return false, "NeedHerbFirst"
+	end
+
 	-- 添柴
 	local step = alchemyStep[userId] + 1
 	alchemyStep[userId] = step
@@ -114,6 +123,7 @@ function AlchemyTask.OnPlayerDrop(player, _area)
 		if taskEvent then
 			taskEvent:FireClient(player, "AlchemyFuel", { Step = step })
 		end
+		player:SetAttribute("AlchemyCarrying", 0)  -- 服务端已清空 carrying
 		return false, "FuelAdded"
 	end
 

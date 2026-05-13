@@ -15,6 +15,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- ============================================================
 local AlchemyUI = {}
 local screenGui = nil
+local closeHandle = nil  -- 添柴自动关闭定时器句柄
 
 -- ============================================================
 -- 颜色常量
@@ -36,6 +37,12 @@ local COLORS = {
 -- 添柴动画：显示添柴进度条 + 火焰渐变
 -- ============================================================
 function AlchemyUI:ShowFire(step)
+	-- 取消前一个待执行的自动关闭（防止与 ShowResult 冲突）
+	if closeHandle then
+		task.cancel(closeHandle)
+		closeHandle = nil
+	end
+
 	-- 关闭旧 UI（如果有）
 	self:Close()
 
@@ -113,8 +120,9 @@ function AlchemyUI:ShowFire(step)
 	local tween = TweenService:Create(overlay, TweenInfo.new(0.3), { BackgroundTransparency = 0.5 })
 	tween:Play()
 
-	-- 1.2 秒后自动关闭
-	task.delay(1.2, function()
+	-- 1.2 秒后自动关闭，保存句柄以便取消
+	closeHandle = task.delay(1.2, function()
+		closeHandle = nil
 		self:Close()
 	end)
 end
@@ -302,6 +310,10 @@ end
 -- 关闭
 -- ============================================================
 function AlchemyUI:Close()
+	if closeHandle then
+		task.cancel(closeHandle)
+		closeHandle = nil
+	end
 	if screenGui then
 		screenGui:Destroy()
 		screenGui = nil
