@@ -1,3 +1,4 @@
+local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
 local AnimationFactory = {}
 
 local function createPose(partName, cframe, weight)
@@ -85,6 +86,11 @@ function AnimationFactory:CreateKneelSequence()
 end
 
 function AnimationFactory:PlayAnimation(humanoid, sequence, looped)
+    if sequence.ClassName == "KeyframeSequence" then
+        local anim = Instance.new("Animation")
+        anim.AnimationId = KeyframeSequenceProvider:RegisterKeyframeSequence(sequence)
+        sequence = anim
+    end
     local track = humanoid:LoadAnimation(sequence)
     track.Priority = Enum.AnimationPriority.Action
     track.Looped = looped or false

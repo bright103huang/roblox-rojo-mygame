@@ -232,4 +232,7 @@ return {
 	GetHour = function() return currentGameHour end,
 	IsNight = function() return isNight end,
 	GetTimeModifier = getCurrentTimeModifier,
+	AdvanceHours = function(self, hours)
+		currentGameHour = (currentGameHour + hours) % DAY_HOURS
+	end,
 }

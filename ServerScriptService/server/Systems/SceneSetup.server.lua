@@ -738,19 +738,10 @@ local function setupHomeScene()
 	createDecor(origin + Vector3.new(20, 3, -3.9), Vector3.new(4.4, 4.4, 0.15), BrickColor.new("Dark brown"))
 
 	-- ============================================================
-	-- 屏风隔断（卧室与打坐区之间）
+	-- 屏风隔断（祈福区与打坐区之间）
 	-- ============================================================
 	createDecor(origin + Vector3.new(-7, 2.5, -2), Vector3.new(0.15, 5, 4), BrickColor.new("Dark brown"))
 	createDecor(origin + Vector3.new(-7, 3, -2), Vector3.new(4, 2, 0.15), BrickColor.new("Bright yellow"))
-
-	-- ============================================================
-	-- 床（卧室区 X=-12）
-	-- ============================================================
-	createDecor(origin + Vector3.new(-12, 0.25, 0), Vector3.new(4, 0.5, 3), BrickColor.new("Bright yellow"))
-	createDecor(origin + Vector3.new(-12, 0.5, 0), Vector3.new(3.5, 0.3, 2.5), BrickColor.new("Bright orange"))
-	createDecor(origin + Vector3.new(-12, 0.9, 1.2), Vector3.new(3.6, 0.5, 0.2), BrickColor.new("Dark brown"))
-	createDecor(origin + Vector3.new(-12, 0.9, -1.2), Vector3.new(3.6, 0.5, 0.2), BrickColor.new("Dark brown"))
-	createDecor(origin + Vector3.new(-12, 1.2, 0), Vector3.new(0.3, 0.3, 0.3), BrickColor.new("Bright blue"))
 
 	-- ============================================================
 	-- 打坐区（中央 X=0）：蓝色蒲团 + 暖色地毯
@@ -759,6 +750,24 @@ local function setupHomeScene()
 	createDecor(origin + Vector3.new(0, 0.3, 0), Vector3.new(4, 0.4, 4), BrickColor.new("Bright blue"), Enum.PartType.Cylinder)
 	createDecor(origin + Vector3.new(0, 0.5, 0), Vector3.new(2.5, 0.2, 2.5), BrickColor.new("Bright orange"), Enum.PartType.Cylinder)
 
+		-- ============================================================
+		-- 大床（右侧 X=15）——逼真大床
+		-- ============================================================
+		-- 床架底座
+		createDecor(origin + Vector3.new(15, 0.2, 0), Vector3.new(7, 0.4, 5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
+		-- 床垫
+		createDecor(origin + Vector3.new(15, 0.55, 0), Vector3.new(6.5, 0.35, 4.5), BrickColor.new("Bright yellow"))
+		-- 被子（红色）
+		createDecor(origin + Vector3.new(15, 0.85, -0.3), Vector3.new(5, 0.2, 4), BrickColor.new("Bright red"))
+		-- 枕头
+		createDecor(origin + Vector3.new(15, 0.8, 2), Vector3.new(1.5, 0.25, 2), BrickColor.new("White"))
+		-- 床头板
+		createDecor(origin + Vector3.new(15, 2.5, -2.3), Vector3.new(7, 4, 0.3), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
+		-- 床柱四角
+		createDecor(origin + Vector3.new(12, 0.4, -2.2), Vector3.new(0.3, 0.8, 0.3), BrickColor.new("Dark brown"))
+		createDecor(origin + Vector3.new(18, 0.4, -2.2), Vector3.new(0.3, 0.8, 0.3), BrickColor.new("Dark brown"))
+		createDecor(origin + Vector3.new(12, 0.4, 2.2), Vector3.new(0.3, 0.8, 0.3), BrickColor.new("Dark brown"))
+		createDecor(origin + Vector3.new(18, 0.4, 2.2), Vector3.new(0.3, 0.8, 0.3), BrickColor.new("Dark brown"))
 	-- ============================================================
 	-- 挂画（休闲区 Z=-4 后墙装饰）
 	-- ============================================================
@@ -808,7 +817,7 @@ local function setupHomeScene()
 	medLight.Color = Color3.fromRGB(255, 200, 100)
 
 	-- 卧室暖白灯
-	local bedLightPart = createDecor(origin + Vector3.new(-12, 4, 0), Vector3.new(0.2, 0.2, 0.2), BrickColor.new("Bright yellow"), Enum.PartType.Ball, Enum.Material.Neon)
+	local bedLightPart = createDecor(origin + Vector3.new(15, 10, 0), Vector3.new(0.2, 0.2, 0.2), BrickColor.new("Bright yellow"), Enum.PartType.Ball, Enum.Material.Neon)
 	local bedLight = Instance.new("PointLight")
 	bedLight.Parent = bedLightPart
 	bedLight.Range = 10
@@ -855,8 +864,8 @@ local function setupHomeScene()
 	local bedDebounce = {}
 	local bedPart = createArea({
 		Name = "HomeBed",
-		Position = origin + Vector3.new(-12, 1, 0),
-		Size = Vector3.new(4, 0.5, 3),
+		Position = origin + Vector3.new(15, 1, 0),
+		Size = Vector3.new(7, 0.5, 5),
 		Color = BrickColor.new("Bright orange"),
 		Transparency = 0.2,
 		Label = "睡觉（一日一次）",
@@ -904,21 +913,29 @@ local function setupHomeScene()
 		HomeEvent:FireClient(player, "ShowPrayer")
 	end)
 
-	-- ============================================================
-	-- 场景引导提示
-	-- ============================================================
-	createHintBoard(origin + Vector3.new(0, 4, 0),
-		"① 蓝色蒲团打坐——按 F 控制呼吸节奏",
-		BrickColor.new("Gold"))
-	createHintBoard(origin + Vector3.new(0, 2.5, 0),
-		"② 戾气太重坐不住？先去干点好事再来",
-		BrickColor.new("Bright orange"))
-	createHintBoard(origin + Vector3.new(-12, 4, 0),
-		"③ 床上一躺——睡觉恢复快，一天一次",
-		BrickColor.new("Bright yellow"))
+		-- 场景引导提示（入口地图指引，放在出生点附近）
+		-- ============================================================
+		createHintBoard(origin + Vector3.new(-18, 10, 0),
+			"👈 左走祈福  |  🧘 中间打坐炼化  |  👉 右走大床睡觉",
+			BrickColor.new("Bright yellow"))
 
-	print("🏠 家已就绪（扩展版 50 宽：祈福区 | 卧室 | 打坐区 | 休闲区）")
-end
+		-- 打坐区说明（X=0 蒲团上方）
+		createHintBoard(origin + Vector3.new(0, 14, 0),
+			"① 气球变大→长按F 2秒→闭气完成 | 累计3次入定成功",
+			BrickColor.new("Gold"))
+		createHintBoard(origin + Vector3.new(0, 11, 0),
+			"② 中途松F需重新按住  |  按Q可提前退出",
+			BrickColor.new("Bright orange"))
+		createHintBoard(origin + Vector3.new(0, 8, 0),
+			"③ 戾气>50无法打坐  |  丹药可在打坐中炼化",
+			BrickColor.new("Bright yellow"))
+		-- 大床区说明
+		createHintBoard(origin + Vector3.new(15, 10, 0),
+			"④ 走上大床→睡觉 | 一日一次",
+			BrickColor.new("Bright yellow"))
+
+		print("🏠 家已就绪（50 宽：祈福区 | 屏风 | 打坐区 | 茶座 | 大床）")
+
 	local cultivationPart = createArea({
 		Name = "HomeCultivation",
 		Position = origin + Vector3.new(0, 1, 0),
@@ -1045,19 +1062,6 @@ end
 	light.Brightness = 3
 	light.Color = Color3.fromRGB(255, 200, 100)
 
-	-- ============================================================
-	-- 场景引导提示
-	-- ============================================================
-	createHintBoard(
-		origin + Vector3.new(0, 4, 0),
-		"① 蒲团上坐好——冥想回血回蓝一条龙",
-		BrickColor.new("Gold")
-	)
-	createHintBoard(
-		origin + Vector3.new(0, 2.5, 0),
-		"② 戾气太重坐不住？先去干点好事再来",
-		BrickColor.new("Bright orange")
-	)
 
 	print("🏠 家已就绪（炼化区: x=0）")
 end

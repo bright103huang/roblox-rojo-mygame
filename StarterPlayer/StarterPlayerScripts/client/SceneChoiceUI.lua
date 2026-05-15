@@ -516,7 +516,7 @@ local function createManualButton()
 	manualBtn = Instance.new("TextButton")
 	manualBtn.Name = "SceneSwitchBtn"
 	manualBtn.Size = UDim2.new(0, 100, 0, 36)
-	manualBtn.Position = UDim2.new(1, -110, 0, 10)
+	manualBtn.Position = UDim2.new(1, -110, 0.5, -18)
 	manualBtn.Text = "切换场景"
 	manualBtn.TextColor3 = COLORS.White
 	manualBtn.TextSize = 14

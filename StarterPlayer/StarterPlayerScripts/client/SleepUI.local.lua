@@ -211,9 +211,11 @@ UserInputService.InputBegan:Connect(function(input, gp)
     if not isActive or gp then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         pointerVel = pointerVel + 0.4
-    elseif input.KeyCode == Enum.KeyCode.Escape then
-        SleepUI:Complete()
     end
+end)
+-- 切换场景时自动退出睡觉
+player:GetAttributeChangedSignal("CurrentScene"):Connect(function()
+    if isActive then SleepUI:Complete() end
 end)
 
 HomeEvent.OnClientEvent:Connect(function(action, data)

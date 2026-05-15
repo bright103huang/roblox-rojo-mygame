@@ -8,6 +8,7 @@ local AnimationFactory = require(ReplicatedStorage.Shared.Modules.AnimationFacto
 local PrayerUI = {}
 local screenGui
 local currentTrack = nil
+local toastGui  -- 独立通知浮层，不会被祈福面板隐藏
 
 local OPTIONS = {
     Basic = { name = "诚心礼拜", cost = 0, desc = "功德+3, 戾气-1" },
@@ -102,7 +103,35 @@ function PrayerUI:CreateUI()
         PrayerUI:Hide()
     end)
 
+    -- 独立通知浮层（不被祈福面板关闭影响）
+    toastGui = Instance.new("ScreenGui")
+    toastGui.Name = "PrayerToast"
+    toastGui.ResetOnSpawn = false
+    toastGui.Parent = player:WaitForChild("PlayerGui")
+
     PrayerUI:Hide()
+end
+
+function PrayerUI:ShowToast(message, isSuccess)
+    if not toastGui then return end
+    -- 清除旧提示
+    for _, child in ipairs(toastGui:GetChildren()) do
+        if child:IsA("TextLabel") then child:Destroy() end
+    end
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 400, 0, 50)
+    label.Position = UDim2.new(0.5, -200, 0.3, -25)
+    label.BackgroundTransparency = 0.3
+    label.BackgroundColor3 = isSuccess and Color3.fromRGB(40, 80, 40) or Color3.fromRGB(80, 40, 40)
+    label.Text = message or ""
+    label.TextColor3 = isSuccess and Color3.fromRGB(200, 255, 200) or Color3.fromRGB(255, 200, 200)
+    label.TextSize = 24
+    label.Font = Enum.Font.SourceSansBold
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.Parent = toastGui
+    task.delay(3.5, function()
+        if label and label.Parent then label:Destroy() end
+    end)
 end
 
 function PrayerUI:Show()
@@ -137,8 +166,16 @@ HomeEvent.OnClientEvent:Connect(function(action, data)
         if currentTrack then currentTrack:Stop(); currentTrack = nil end
         if data.Success then
             PrayerUI:Hide()
+            PrayerUI:ShowToast(data.Message or "祈福成功", true)
+        else
+            PrayerUI:ShowToast(data.Message or "祈福失败", false)
         end
     end
+end)
+-- 切换场景时自动关闭祈福
+player:GetAttributeChangedSignal("CurrentScene"):Connect(function()
+    PrayerUI:Hide()
+    if toastGui then toastGui:Destroy(); toastGui = nil end
 end)
 
 PrayerUI:CreateUI()

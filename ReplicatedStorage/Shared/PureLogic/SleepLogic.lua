@@ -44,7 +44,12 @@ end
 	@return {Stamina, Spirit, Fatigue, Malice, Exp}
 ]]
 function SleepLogic.CalcSleepRecovery(quality, current, config)
-	config = config or DEFAULT_CONFIG
+	-- 合并传入配置与默认值，确保 MAX_STAMINA/MAX_SPIRIT 等字段不缺
+	local cfg = {}
+	for k, v in pairs(DEFAULT_CONFIG) do cfg[k] = v end
+	if config then
+		for k, v in pairs(config) do cfg[k] = v end
+	end
 	local c = current or {}
 	local result = {
 		Stamina = c.Stamina or 0,
@@ -55,24 +60,24 @@ function SleepLogic.CalcSleepRecovery(quality, current, config)
 	}
 
 	if quality == "酣睡" then
-		result.Stamina = config.MAX_STAMINA
-		result.Spirit = math.min(config.MAX_SPIRIT, result.Spirit + config.DeepSpiritRecovery)
+		result.Stamina = cfg.MAX_STAMINA
+		result.Spirit = math.min(cfg.MAX_SPIRIT, result.Spirit + cfg.DeepSpiritRecovery)
 		result.Fatigue = 0
 		result.Malice = math.max(0, result.Malice - 8)
-		result.Exp = config.ExpPerDeepSleep
+		result.Exp = cfg.ExpPerDeepSleep
 	elseif quality == "浅睡" then
-		result.Stamina = math.min(config.MAX_STAMINA, result.Stamina + config.LightStaminaRecovery)
-		result.Spirit = math.min(config.MAX_SPIRIT, result.Spirit + config.LightSpiritRecovery)
-		result.Fatigue = math.max(0, result.Fatigue - config.LightFatigueLoss)
+		result.Stamina = math.min(cfg.MAX_STAMINA, result.Stamina + cfg.LightStaminaRecovery)
+		result.Spirit = math.min(cfg.MAX_SPIRIT, result.Spirit + cfg.LightSpiritRecovery)
+		result.Fatigue = math.max(0, result.Fatigue - cfg.LightFatigueLoss)
 		result.Malice = math.max(0, result.Malice - 3)
-		result.Exp = config.ExpPerLightSleep
+		result.Exp = cfg.ExpPerLightSleep
 	elseif quality == "辗转" then
-		result.Stamina = math.min(config.MAX_STAMINA, result.Stamina + config.RestlessStaminaRecovery)
-		result.Spirit = math.min(config.MAX_SPIRIT, result.Spirit + config.RestlessSpiritRecovery)
-		result.Fatigue = math.max(0, result.Fatigue - config.RestlessFatigueLoss)
+		result.Stamina = math.min(cfg.MAX_STAMINA, result.Stamina + cfg.RestlessStaminaRecovery)
+		result.Spirit = math.min(cfg.MAX_SPIRIT, result.Spirit + cfg.RestlessSpiritRecovery)
+		result.Fatigue = math.max(0, result.Fatigue - cfg.RestlessFatigueLoss)
 	else
-		result.Stamina = math.min(config.MAX_STAMINA, result.Stamina + config.InsomniaStaminaRecovery)
-		result.Fatigue = math.max(0, result.Fatigue - config.InsomniaFatigueLoss)
+		result.Stamina = math.min(cfg.MAX_STAMINA, result.Stamina + cfg.InsomniaStaminaRecovery)
+		result.Fatigue = math.max(0, result.Fatigue - cfg.InsomniaFatigueLoss)
 	end
 
 	return result
