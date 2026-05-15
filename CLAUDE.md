@@ -88,21 +88,44 @@ Step 5 — 执行
 
 ---
 
-## 3️⃣ 分区开发 (using-git-worktrees)
+## 3️⃣ 分区开发 — using-git-worktrees（强制）
 
-* **目标**：保证每个任务或子代理在独立 Git 工作树执行，防止文件/上下文污染。
+**writing-plans 完成后，必须立即执行此步骤，禁止跳过。**
+
+* **目标**：保证每个任务在独立 Git 工作树执行，main 分支始终保持干净。
 * **操作**：
 
-  1. 每个任务生成独立分支：
-
+  1. 使用 `EnterWorktree` 创建工作树或在主 repo 创建独立分支：
      ```bash
-     git checkout -b feature/<任务名>
+     git checkout -b feat/<功能名>
      ```
-  2. 子代理只允许修改其负责的模块 / 文件范围。
+  2. 所有实现代码只写入该分支/工作树。
+  3. 在整个实现期间，main 分支不产生任何提交。
 * **约束**：
 
-  * NO BRANCH → 禁止操作 src/ 文件
-  * 工作完成前禁止合并到主分支
+  * **NO BRANCH / NO WORKTREE → 禁止写任何代码**
+  * 工作完成前禁止合并到 main
+  * 如果接续的会话发现 main 已被污染（前序未使用 worktree），必须先建分支补救，不得继续在 main 上堆叠
+
+---
+
+## 4️⃣ 任务执行 — 纯逻辑提取 + TDD（每个任务内循环）
+
+**工作树就绪后，对 writing-plans 拆解的每个任务，依次执行：**
+
+  1. **纯逻辑提取检查** — 分析任务："有没有一个函数不依赖 Roblox API 也能跑？"
+     - ✅ 有 → 在 `Shared/PureLogic/` 下创建纯函数模块
+       1. 在 `tests/run.lua` 写测试 → 运行 `luau tests/run.lua` → **RED**
+       2. 实现纯函数 → 运行 `luau tests/run.lua` → **GREEN**
+       3. 在 Roblox 胶水代码中 `require()` 该模块
+     - ❌ 无（纯 UI/Instance 创建）→ 提交时说明理由
+
+  2. 实现 Roblox 胶水代码
+  3. 提交
+  4. 进入下一个任务，重复步骤 1-3
+
+* 无法提取纯逻辑的理由示例："BreathUI — 全部依赖 TweenService/UserInputService"
+* `require` 路径格式: `require("../ReplicatedStorage/Shared/PureLogic/模块名")`
 
 ---
 
