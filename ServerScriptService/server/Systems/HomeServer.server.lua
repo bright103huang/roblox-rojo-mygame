@@ -5,6 +5,7 @@ local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
 local DataManager = require(script.Parent.DataManager)
 local StatusService = require(script.Parent.StatusService)
 local StatsConfig = require(ReplicatedStorage.Shared.Config.StatsConfig)
+local SleepLogic = require(ReplicatedStorage.Shared.PureLogic.SleepLogic)
 local TimeService = require(script.Parent.TimeService)
 
 -- Meditation recovery handlers
@@ -41,29 +42,20 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 		DataManager:UpdateField(player, "LastSleptDay", todayKey)
 
 		local ratio = data.PeaceRatio or 0
-		local quantity = "失眠"
-		if ratio >= StatsConfig.SLEEP.DeepThreshold then quantity = "酣睡"
-		elseif ratio >= StatsConfig.SLEEP.LightThreshold then quantity = "浅睡"
-		elseif ratio >= StatsConfig.SLEEP.RestlessThreshold then quantity = "辗转" end
+		local quality = SleepLogic.CalcSleepQuality(ratio, StatsConfig.SLEEP)
+		local recovery = SleepLogic.CalcSleepRecovery(quality, {
+			Stamina = plrData.Stamina,
+			Spirit = plrData.Spirit,
+			Fatigue = plrData.Fatigue,
+			Malice = plrData.Malice,
+		}, StatsConfig.SLEEP)
 
-		if quantity == "酣睡" then
-			plrData.Stamina = StatsConfig.MAX_STAMINA
-			plrData.Spirit = math.min(StatsConfig.MAX_SPIRIT, (plrData.Spirit or 0) + StatsConfig.SLEEP.DeepSpiritRecovery)
-			plrData.Fatigue = 0
-			plrData.Malice = math.max(0, (plrData.Malice or 0) - 8)
-			StatusService:AddExp(player, "Agility", StatsConfig.SLEEP.ExpPerDeepSleep)
-		elseif quantity == "浅睡" then
-			plrData.Stamina = math.min(StatsConfig.MAX_STAMINA, (plrData.Stamina or 0) + StatsConfig.SLEEP.LightStaminaRecovery)
-			plrData.Spirit = math.min(StatsConfig.MAX_SPIRIT, (plrData.Spirit or 0) + StatsConfig.SLEEP.LightSpiritRecovery)
-			plrData.Fatigue = math.max(0, (plrData.Fatigue or 0) - StatsConfig.SLEEP.LightFatigueLoss)
-			plrData.Malice = math.max(0, (plrData.Malice or 0) - 3)
-		elseif quantity == "辗转" then
-			plrData.Stamina = math.min(StatsConfig.MAX_STAMINA, (plrData.Stamina or 0) + StatsConfig.SLEEP.RestlessStaminaRecovery)
-			plrData.Spirit = math.min(StatsConfig.MAX_SPIRIT, (plrData.Spirit or 0) + StatsConfig.SLEEP.RestlessSpiritRecovery)
-			plrData.Fatigue = math.max(0, (plrData.Fatigue or 0) - StatsConfig.SLEEP.RestlessFatigueLoss)
-		else
-			plrData.Stamina = math.min(StatsConfig.MAX_STAMINA, (plrData.Stamina or 0) + StatsConfig.SLEEP.InsomniaStaminaRecovery)
-			plrData.Fatigue = math.max(0, (plrData.Fatigue or 0) - StatsConfig.SLEEP.InsomniaFatigueLoss)
+		plrData.Stamina = recovery.Stamina
+		plrData.Spirit = recovery.Spirit
+		plrData.Fatigue = recovery.Fatigue
+		plrData.Malice = recovery.Malice
+		if recovery.Exp > 0 then
+			StatusService:AddExp(player, "Agility", recovery.Exp)
 		end
 
 		DataManager:UpdateField(player, "Stamina", plrData.Stamina)
@@ -73,7 +65,7 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 
 		-- Advance time by 2 hours
 		TimeService:AdvanceHours(2)
-		HomeEvent:FireClient(player, "SleepSettlement", { Message = quantity .. "。体力精神恢复" })
+		HomeEvent:FireClient(player, "SleepSettlement", { Message = quality .. "。体力精神恢复" })
 
 	elseif action == "PrayerChoice" then
 		local plrData = DataManager:GetData(player)

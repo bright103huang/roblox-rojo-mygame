@@ -142,9 +142,6 @@ local StatsConfig = {
 	-- ============================================================
 	DAY_CYCLE_MINUTES = 12,        -- 12 分钟 = 1 天
 	MIDNIGHT_FATIGUE_REDUCTION = -30, -- 深夜结算减 30 疲劳
-}
-
-return StatsConfig
 
 	-- ============================================================
 	-- 打坐/冥想数值
@@ -192,3 +189,6 @@ return StatsConfig
 		ExpPerDeepSleep = 3,
 		ExpPerLightSleep = 1,
 	},
+}
+
+return StatsConfig
