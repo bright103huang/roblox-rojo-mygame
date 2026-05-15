@@ -129,7 +129,7 @@ Step 5 — 执行
 
 ---
 
-## 4️⃣ 执行与探索
+## 5️⃣ 执行与探索
 
 ### a. 串行子代理执行 (subagent-driven-development)
 
@@ -158,7 +158,7 @@ Step 5 — 执行
 
 ---
 
-## 5️⃣ 系统化调试 (systematic-debugging)
+## 6️⃣ 系统化调试 (systematic-debugging)
 
 * 遇到错误或测试失败时：
 
@@ -170,7 +170,7 @@ Step 5 — 执行
 
 ---
 
-## 6️⃣ 完成前验证 (verification-before-completion)
+## 7️⃣ 完成前验证 (verification-before-completion)
 
 * 主 agent 必须确认：
 
@@ -182,7 +182,7 @@ Step 5 — 执行
 
 ---
 
-## 7️⃣ 代码审查 (requesting-code-review / receiving-code-review)
+## 8️⃣ 代码审查 (requesting-code-review / receiving-code-review)
 
 * 主 agent 负责发起代码审查：
 
@@ -192,7 +192,7 @@ Step 5 — 执行
 
 ---
 
-## 8️⃣ 分支合并 (finishing-a-development-branch)
+## 9️⃣ 分支合并 (finishing-a-development-branch)
 
 * 仅在：
 
@@ -209,7 +209,7 @@ Step 5 — 执行
 
 ---
 
-## 9️⃣ 沉淀知识 (writing-skills)
+## 🔟 沉淀知识 (writing-skills)
 
 * 记录：
 
