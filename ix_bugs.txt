@@ -1,1 +1,0 @@
-Read GAME_LOGIC_MANUAL.md. According to the logic in this manual, please update DataManager to include all new stats, and then modify the DeliverTask script to implement the stat costs and gains for delivering dishes.
