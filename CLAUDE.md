@@ -1,11 +1,58 @@
-# 🏗️ MyGame 项目架构与 Superpowers 全流程执行规范 (claude.md)
+🏗️ MyGame 项目架构与 Superpowers 全流程执行规范 (claude.md)
 
-## 🤖 核心元准则 (Meta-Protocol)
+🤖 核心元准则 (Meta-Protocol) — USING-SUPERPOWERS 铁律
 
-你现在是具备 **14 个 Superpowers 技能** 的全自动软件工程主 agent。
-**每次任务必须严格按照以下工作流执行**，禁止跳过任何步骤。
+using-superpowers 不是一句口号，而是一个必须严格执行的**操作模式闸门**。以下规则不可协商、不可跳过。
 
-> 每个子代理必须通过主 agent 调度和审核，TDD、上下文隔离、并行/串行执行、验证、分支合并和沉淀必须被强制执行。
+## 接令五步检查 (Mandatory Five-Step Check)
+
+**每次收到用户指令后，必须依次执行以下五步，任何一步未完成则禁止进入下一步：**
+
+```
+Step 1 — 指令分类
+  │  判定：这是”设计讨论”、”Bug修复”、”功能实现”、”配置修改”、”知识查询”中的哪一类？
+  │  输出：[分类结果]
+  │
+Step 2 — 技能映射
+  │  从技能列表中选出所有可能相关的技能（至少 1 个，通常 2-3 个）
+  │  输出：[技能列表] + [选择理由]
+  │
+Step 3 — Skill 工具调用
+  │  调用 Skill 工具加载选中技能，读取其内容（不是 Read，是 Skill 工具！）
+  │  输出：[技能已加载]
+  │
+Step 4 — 流程承诺
+  │  根据技能要求，声明本次任务将走哪条路径
+  │  例如：brainstorming → writing-plans → (worktree) → 执行
+  │  输出：[执行路径]
+  │
+Step 5 — 执行
+  │  按 Step 4 的路径开始执行
+  │
+  └── 任何步骤发现不适用 → 回到 Step 2 重新映射
+```
+
+## 铁律四条 (Non-Negotiable Rules)
+
+**铁律 1：Skill 工具调用优先**
+在输出任何内容（包括”让我看看”、”我需要先了解”等回应）之前，必须先调用 Skill 工具加载技能。禁止先说话再调技能。
+
+**铁律 2：永不跳过 brainstorming**
+任何修改代码的操作，无论多小，都必须经过 brainstorming → writing-plans 路径。没有”这不值得做设计”的例外。
+
+**铁律 3：元评估日志**
+每次激活 using-superpowers 后，第一条回复必须以以下格式输出元评估：
+
+```
+[元评估]
+指令分类：<分类结果>
+匹配技能：[技能1](理由), [技能2](理由)
+执行路径：<路径声明>
+风险等级：高/中/低
+```
+
+**铁律 4：违规自纠**
+如果在执行中发现跳过了上述步骤，必须立即 STOP 当前操作，回退到跳过的步骤重新执行。禁止”下次注意”式的带病推进。
 
 ---
 
@@ -160,25 +207,14 @@
 ```text
 你是子代理，负责 [认知域名称]。
 任务：[任务名称]
-
-## TDD 强制流程（必须遵守）
-1. 分析任务，识别可提取的纯逻辑（计算公式/数据校验/状态转换）
-2. 在 tests/run.lua 底部添加 describe/it 测试用例（RED case）
-3. 运行验证 RED：cd 项目根目录 && luau tests/run.lua → 预期新测试 FAIL
-4. 实现纯函数（GREEN）
-5. 再次运行 luau tests/run.lua → 预期 ALL PASS
-6. 编写 Roblox 胶水层调用纯函数（保持最薄）
-7. 将测试结果（stdout 输出）返回主 agent
-
-## 提取纯逻辑原则
-- 纯函数 = 入参出参都是基本类型/table，不依赖任何 Roblox API
-- Roblox 胶水层只做：读参数 → 调纯函数 → 写回结果/FireEvent
-- 如果任务没有可提取的纯逻辑（纯 UI 绑定等），需说明原因
-
-## 约束
-- 禁止修改 tests/run.lua 已有测试（只追加新的 describe）
-- 禁止修改其他子代理的文件
-- 遇到问题必须上报，禁止跳过步骤
+规则：
+1. 严格 TDD 流程：
+   - RED case → VERIFY RED → GREEN → REFACTOR
+2. 禁止修改主上下文和其他子代理上下文
+3. 输出结果必须返回主 agent
+4. 遇到问题必须上报，禁止跳过任何步骤
+5. 完成任务后立即销毁上下文
+6. 所有边界和流程遵循主 agent 提供的边界模板和 workflow 模板
 ```
 
 ---
@@ -192,7 +228,6 @@
 * **CONTEXT ISOLATION**：所有子代理上下文独立
 * **PARALLEL CONTROL**：并行子代理的结果必须主 agent 汇总
 * **SINGLE INTERFACE**：用户仅能与主 agent 交互
-* **TEST EVIDENCE**：子代理必须提供 `luau tests/run.lua` 测试通过的证据，否则禁止合并
 
 ---
 
@@ -201,25 +236,28 @@
 用户输入：
 
 ```text
-启动任务：新增炼丹系统
+新增一个炼丹系统
 ```
 
+
+```
 主 agent 回复：
 
-```
-收到。正在启动 Superpowers 流水线：
+[元评估]
+指令分类：功能实现（新增完整系统）
+匹配技能：
+  - brainstorming（需要先对齐需求和设计）
+  - writing-plans（需要拆解多模块任务）
+  - roblox-2d-game（项目专属规则）
+执行路径：brainstorming → writing-plans → 实施
+风险等级：高（涉及数值矩阵与逻辑状态变更）
 
-[技能: brainstorming] 检索 PROJECT_KNOWLEDGE.md 确认数值和任务因果影响...
-[技能: writing-plans] 生成任务拆解和子代理列表...
-[技能: using-git-worktrees] 创建 feature/AlchemySystem 分支...
-[技能: subagent-driven-development] 生成独立子代理，上下文隔离，绑定 TDD checklist...
-[技能: dispatching-parallel-agents] 并行探索未知子领域...
-[技能: executing-plans] 子代理开始执行 RED → VERIFY → GREEN → REFACTOR...
-[技能: systematic-debugging] 遇到报错进行复现、隔离、根因分析、验证...
-[技能: verification-before-completion] 全量测试通过，TDD 检查完成...
-[技能: requesting-code-review] 发起代码审查，收集修改意见...
-[技能: finishing-a-development-branch] 合并 feature 分支，删除临时工作树...
-[技能: writing-skills] 沉淀边界模板、workflow 模板和 Lessons Learned...
+我正在使用 brainstorming 技能来对齐设计。在创建执行计划前，我需要与你确认以下设计要点：
+
+......
+
+[后续流水线预告]：
+设计批准后 → writing-plans 拆解任务 → worktree 隔离开发 → TDD 驱动实施 → verification 验证 → code review → 合并。
 ```
 ## 🧠 输出安全规则（防止超长输出）
 

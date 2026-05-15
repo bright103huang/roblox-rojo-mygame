@@ -241,6 +241,9 @@ end
 -- isMeditating: 打坐状态效果 x1.5
 -- ============================================================
 function ShopService:UseItem(player, itemKey, isMeditating)
+	if not isMeditating then
+		return { Success = false, Message = "丹药需在打坐时炼化" }
+	end
 	local data = DataManager:GetData(player)
 	if not data then return { Success = false, Message = "数据未加载" } end
 	local backpack = data.Backpack or {}

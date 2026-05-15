@@ -141,4 +141,5 @@ HomeEvent.OnClientEvent:Connect(function(action, data)
     end
 end)
 
+PrayerUI:CreateUI()
 return PrayerUI

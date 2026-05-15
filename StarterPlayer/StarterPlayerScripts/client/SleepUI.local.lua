@@ -226,4 +226,5 @@ HomeEvent.OnClientEvent:Connect(function(action, data)
     end
 end)
 
+SleepUI:CreateUI()
 return SleepUI

@@ -11,6 +11,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(script.Parent.DataManager)
+local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
 local TimeService = nil  -- 延迟加载，避免循环依赖
 
 local function getTimeModifier()
@@ -708,30 +709,216 @@ local function setupShopScene()
 end
 
 -- ============================================================
--- 家（炼化提升）— 2D 横版布局
+-- 家（炼化提升）— 2D 横版布局（扩展版 X=50）
 -- ============================================================
 local function setupHomeScene()
 	local origin = SCENES.Home
+	local W = 50
 
-	-- 地面
-	createFloor(origin + Vector3.new(0, -0.5, 0), 30, 8, BrickColor.new("Bright yellow"), 0.1)
+	-- 地面（扩展至 50 宽）
+	createFloor(origin + Vector3.new(0, -0.5, 0), W, 8, BrickColor.new("Bright yellow"), 0.1)
 	createUnderFloor(origin + Vector3.new(0, -0.5, 0), 500, 40)
 
-	-- 后墙（z=-4）
-	createWall(origin + Vector3.new(0, 3, -4), 30, 6, 0.5, BrickColor.new("Dark brown"))
+	-- 后墙（z=-4，50 宽）
+	createWall(origin + Vector3.new(0, 3, -4), W, 6, 0.5, BrickColor.new("Dark brown"))
 
 	-- 左右墙（z=-4 到 z=4）
-	createWall(origin + Vector3.new(-14, 3, 0), 0.5, 6, 8, BrickColor.new("Dark brown"))
-	createWall(origin + Vector3.new(14, 3, 0), 0.5, 6, 8, BrickColor.new("Dark brown"))
+	createWall(origin + Vector3.new(-24, 3, 0), 0.5, 6, 8, BrickColor.new("Dark brown"))
+	createWall(origin + Vector3.new(24, 3, 0), 0.5, 6, 8, BrickColor.new("Dark brown"))
 
-	-- 屋顶装饰
-	createDecor(origin + Vector3.new(0, 6, 0), Vector3.new(30, 0.3, 8), BrickColor.new("Bright red"), nil, Enum.Material.Wood)
+	-- 屋顶
+	createDecor(origin + Vector3.new(0, 6, 0), Vector3.new(W, 0.3, 8), BrickColor.new("Bright red"), nil, Enum.Material.Wood)
 
-	-- 蒲团（z=0，角色路径上）
-	createDecor(origin + Vector3.new(0, 0.3, 0), Vector3.new(3, 0.4, 3), BrickColor.new("Gold"), Enum.PartType.Cylinder)
-	createDecor(origin + Vector3.new(0, 0.5, 0), Vector3.new(2, 0.2, 2), BrickColor.new("Bright orange"), Enum.PartType.Cylinder)
+	-- ============================================================
+	-- 窗户（后墙 Z=-4）
+	-- ============================================================
+	createDecor(origin + Vector3.new(-20, 3, -3.7), Vector3.new(4, 4, 0.1), BrickColor.new("Bright blue"), nil, Enum.Material.Glass)
+	createDecor(origin + Vector3.new(-20, 3, -3.9), Vector3.new(4.4, 4.4, 0.15), BrickColor.new("Dark brown"))
+	createDecor(origin + Vector3.new(20, 3, -3.7), Vector3.new(4, 4, 0.1), BrickColor.new("Bright blue"), nil, Enum.Material.Glass)
+	createDecor(origin + Vector3.new(20, 3, -3.9), Vector3.new(4.4, 4.4, 0.15), BrickColor.new("Dark brown"))
 
-	-- 炼化区（交互区域，Z=0）— 冥想恢复
+	-- ============================================================
+	-- 屏风隔断（卧室与打坐区之间）
+	-- ============================================================
+	createDecor(origin + Vector3.new(-7, 2.5, -2), Vector3.new(0.15, 5, 4), BrickColor.new("Dark brown"))
+	createDecor(origin + Vector3.new(-7, 3, -2), Vector3.new(4, 2, 0.15), BrickColor.new("Bright yellow"))
+
+	-- ============================================================
+	-- 床（卧室区 X=-12）
+	-- ============================================================
+	createDecor(origin + Vector3.new(-12, 0.25, 0), Vector3.new(4, 0.5, 3), BrickColor.new("Bright yellow"))
+	createDecor(origin + Vector3.new(-12, 0.5, 0), Vector3.new(3.5, 0.3, 2.5), BrickColor.new("Bright orange"))
+	createDecor(origin + Vector3.new(-12, 0.9, 1.2), Vector3.new(3.6, 0.5, 0.2), BrickColor.new("Dark brown"))
+	createDecor(origin + Vector3.new(-12, 0.9, -1.2), Vector3.new(3.6, 0.5, 0.2), BrickColor.new("Dark brown"))
+	createDecor(origin + Vector3.new(-12, 1.2, 0), Vector3.new(0.3, 0.3, 0.3), BrickColor.new("Bright blue"))
+
+	-- ============================================================
+	-- 打坐区（中央 X=0）：蓝色蒲团 + 暖色地毯
+	-- ============================================================
+	createDecor(origin + Vector3.new(0, 0.05, 0), Vector3.new(4.5, 0.05, 4.5), BrickColor.new("Bright orange"), Enum.PartType.Cylinder)
+	createDecor(origin + Vector3.new(0, 0.3, 0), Vector3.new(4, 0.4, 4), BrickColor.new("Bright blue"), Enum.PartType.Cylinder)
+	createDecor(origin + Vector3.new(0, 0.5, 0), Vector3.new(2.5, 0.2, 2.5), BrickColor.new("Bright orange"), Enum.PartType.Cylinder)
+
+	-- ============================================================
+	-- 挂画（休闲区 Z=-4 后墙装饰）
+	-- ============================================================
+	createDecor(origin + Vector3.new(16, 3, -3.8), Vector3.new(3, 2, 0.1), BrickColor.new("Dark brown"))
+	createDecor(origin + Vector3.new(16, 3, -3.7), Vector3.new(2.6, 1.6, 0.05), BrickColor.new("Bright yellow"))
+
+	-- ============================================================
+	-- 小桌茶具（休闲区 X=8，Z=3）
+	-- ============================================================
+	createDecor(origin + Vector3.new(8, 0.5, 3), Vector3.new(2, 0.5, 1), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
+	createDecor(origin + Vector3.new(8, 0.9, 3), Vector3.new(0.5, 0.3, 0.5), BrickColor.new("Bright yellow"), Enum.PartType.Cylinder)
+
+	-- ============================================================
+	-- 药架（祈福区 Z=-3）
+	-- ============================================================
+	createDecor(origin + Vector3.new(-16, 1, -3), Vector3.new(3, 2.5, 0.5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
+	for i = 1, 3 do
+		local bottle = createDecor(origin + Vector3.new(-16 + (i - 2) * 1.2, 2, -3.2), Vector3.new(0.4, 0.6, 0.4), BrickColor.new("Bright green"), Enum.PartType.Cylinder)
+		bottle.Material = Enum.Material.Glass
+	end
+
+	-- ============================================================
+	-- 香炉（祈福区 Z=3）
+	-- ============================================================
+	local incenseBurner = createDecor(origin + Vector3.new(-16, 0.6, 3), Vector3.new(1, 0.5, 1), BrickColor.new("Dark grey"), Enum.PartType.Cylinder)
+	createDecor(origin + Vector3.new(-16, 0.95, 3), Vector3.new(0.4, 0.3, 0.4), BrickColor.new("Bright orange"), Enum.PartType.Cylinder)
+	local incenseGlow = createDecor(origin + Vector3.new(-16, 1.3, 3), Vector3.new(0.3, 0.3, 0.3), BrickColor.new("Bright orange"), Enum.PartType.Ball, Enum.Material.Neon)
+	incenseGlow.Transparency = 0.3
+	local particle = Instance.new("ParticleEmitter")
+	particle.Parent = incenseGlow
+	particle.Rate = 5
+	particle.Lifetime = NumberRange.new(1, 2)
+	particle.Speed = NumberRange.new(0.3, 0.8)
+	particle.Transparency = NumberSequence.new(0.6)
+	particle.Color = ColorSequence.new(Color3.fromRGB(255, 200, 100))
+	particle.Size = NumberSequence.new(0.3)
+
+	-- ============================================================
+	-- 灯光
+	-- ============================================================
+	-- 打坐区暖光
+	local medLightPart = createDecor(origin + Vector3.new(0, 5, 0), Vector3.new(0.2, 0.2, 0.2), BrickColor.new("Bright yellow"), Enum.PartType.Ball, Enum.Material.Neon)
+	local medLight = Instance.new("PointLight")
+	medLight.Parent = medLightPart
+	medLight.Range = 16
+	medLight.Brightness = 3
+	medLight.Color = Color3.fromRGB(255, 200, 100)
+
+	-- 卧室暖白灯
+	local bedLightPart = createDecor(origin + Vector3.new(-12, 4, 0), Vector3.new(0.2, 0.2, 0.2), BrickColor.new("Bright yellow"), Enum.PartType.Ball, Enum.Material.Neon)
+	local bedLight = Instance.new("PointLight")
+	bedLight.Parent = bedLightPart
+	bedLight.Range = 10
+	bedLight.Brightness = 2
+	bedLight.Color = Color3.fromRGB(255, 230, 200)
+
+	-- 祈福台暗金灯
+	local prayLightPart = createDecor(origin + Vector3.new(-16, 4, 0), Vector3.new(0.2, 0.2, 0.2), BrickColor.new("Bright yellow"), Enum.PartType.Ball, Enum.Material.Neon)
+	local prayLight = Instance.new("PointLight")
+	prayLight.Parent = prayLightPart
+	prayLight.Range = 10
+	prayLight.Brightness = 2
+	prayLight.Color = Color3.fromRGB(200, 150, 50)
+
+	-- ============================================================
+	-- 交互区域 — 打坐（蓝色蒲团）
+	-- ============================================================
+	local cushionDebounce = {}
+	local cushionPart = createArea({
+		Name = "HomeCushion",
+		Position = origin + Vector3.new(0, 1, 0),
+		Size = Vector3.new(4, 0.5, 4),
+		Color = BrickColor.new("Bright blue"),
+		Transparency = 0.2,
+		Label = "打坐炼化",
+	})
+	cushionPart.Touched:Connect(function(hit)
+		local char = hit.Parent
+		local player = Players:GetPlayerFromCharacter(char)
+		if not player then return end
+		if cushionDebounce[player.UserId] then return end
+		if player:GetAttribute("Malice") > 50 then
+			print("😤 " .. player.Name .. " 戾气过重，无法打坐")
+			return
+		end
+		cushionDebounce[player.UserId] = true
+		task.delay(1, function() cushionDebounce[player.UserId] = nil end)
+		HomeEvent:FireClient(player, "StartMeditation")
+	end)
+
+	-- ============================================================
+	-- 交互区域 — 床（睡觉）
+	-- ============================================================
+	local bedDebounce = {}
+	local bedPart = createArea({
+		Name = "HomeBed",
+		Position = origin + Vector3.new(-12, 1, 0),
+		Size = Vector3.new(4, 0.5, 3),
+		Color = BrickColor.new("Bright orange"),
+		Transparency = 0.2,
+		Label = "睡觉（一日一次）",
+	})
+	bedPart.Touched:Connect(function(hit)
+		local char = hit.Parent
+		local player = Players:GetPlayerFromCharacter(char)
+		if not player then return end
+		if bedDebounce[player.UserId] then return end
+		local data = DataManager and DataManager:GetData(player)
+		if data and data.LastSleptDay == os.date("%Y%m%d") then
+			print("😴 " .. player.Name .. " 今日已睡过")
+			return
+		end
+		bedDebounce[player.UserId] = true
+		task.delay(1, function() bedDebounce[player.UserId] = nil end)
+		HomeEvent:FireClient(player, "StartSleep")
+	end)
+
+	-- ============================================================
+	-- 交互区域 — 祈福台
+	-- ============================================================
+	local prayerPart = createArea({
+		Name = "PrayerAltar",
+		Position = origin + Vector3.new(-16, 1, 0),
+		Size = Vector3.new(3, 0.5, 3),
+		Color = BrickColor.new("Bright yellow"),
+		Transparency = 0.1,
+		Label = "祈福",
+		Attrs = { PrayerReward = 5 },
+	})
+	local prayerDebounce = {}
+	prayerPart.Touched:Connect(function(hit)
+		local char = hit.Parent
+		local player = Players:GetPlayerFromCharacter(char)
+		if not player then return end
+		if prayerDebounce[player.UserId] then return end
+		local data = DataManager and DataManager:GetData(player)
+		if not data then return end
+		if data.LastPrayerDate == os.date("%Y%m%d") then
+			return
+		end
+		prayerDebounce[player.UserId] = true
+		task.delay(1, function() prayerDebounce[player.UserId] = nil end)
+		HomeEvent:FireClient(player, "ShowPrayer")
+	end)
+
+	-- ============================================================
+	-- 场景引导提示
+	-- ============================================================
+	createHintBoard(origin + Vector3.new(0, 4, 0),
+		"① 蓝色蒲团打坐——按 F 控制呼吸节奏",
+		BrickColor.new("Gold"))
+	createHintBoard(origin + Vector3.new(0, 2.5, 0),
+		"② 戾气太重坐不住？先去干点好事再来",
+		BrickColor.new("Bright orange"))
+	createHintBoard(origin + Vector3.new(-12, 4, 0),
+		"③ 床上一躺——睡觉恢复快，一天一次",
+		BrickColor.new("Bright yellow"))
+
+	print("🏠 家已就绪（扩展版 50 宽：祈福区 | 卧室 | 打坐区 | 休闲区）")
+end
 	local cultivationPart = createArea({
 		Name = "HomeCultivation",
 		Position = origin + Vector3.new(0, 1, 0),

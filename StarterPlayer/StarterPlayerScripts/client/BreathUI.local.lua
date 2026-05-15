@@ -216,4 +216,5 @@ HomeEvent.OnClientEvent:Connect(function(action, data)
     end
 end)
 
+BreathUI:CreateUI()
 return BreathUI
