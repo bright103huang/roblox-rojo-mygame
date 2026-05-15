@@ -145,3 +145,50 @@ local StatsConfig = {
 }
 
 return StatsConfig
+
+	-- ============================================================
+	-- 打坐/冥想数值
+	-- ============================================================
+	MEDITATION = {
+		BaseStaminaRecovery = 3,
+		BaseSpiritRecovery = 6,
+		BaseFatigueLoss = 2,
+		PerfectMultiplier = 1.5,
+		PreciseMultiplier = 1.2,
+		NormalMultiplier = 1.0,
+		MissMultiplier = 0.5,
+		HighMaliceThreshold = 30,
+		MaxMaliceThreshold = 50,
+		PhaseInhaleDuration = 2.0,
+		PhaseHoldDuration = 1.5,
+		PhaseExhaleDuration = 2.0,
+		PerfectWindow = 0.15,
+		PreciseWindow = 0.30,
+		TranceLayerStep = 3,
+	},
+
+	-- ============================================================
+	-- 睡觉数值
+	-- ============================================================
+	SLEEP = {
+		Duration = 20,
+		AdvanceHours = 2,
+		PeaceZoneWidth = 0.4,
+		NightmareInterval = 10,
+		NightmareShrinkFactor = 0.5,
+		DeepThreshold = 0.8,
+		LightThreshold = 0.5,
+		RestlessThreshold = 0.25,
+		DeepStaminaRecovery = -1,
+		DeepSpiritRecovery = 20,
+		LightStaminaRecovery = 30,
+		LightSpiritRecovery = 10,
+		LightFatigueLoss = 15,
+		RestlessStaminaRecovery = 15,
+		RestlessSpiritRecovery = 5,
+		RestlessFatigueLoss = 5,
+		InsomniaStaminaRecovery = 5,
+		InsomniaFatigueLoss = 2,
+		ExpPerDeepSleep = 3,
+		ExpPerLightSleep = 1,
+	},
