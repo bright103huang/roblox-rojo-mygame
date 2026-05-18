@@ -231,7 +231,13 @@ function ShopService:Purchase(player, itemKey)
 	DataManager:UpdateField(player, "Backpack", backpack)
 
 	print("🛒 " .. player.Name .. " 购买了 " .. (item.RealName or item.Name) .. "（背包 +1）")
-	return "Success", "购买成功！" .. (item.RealName or item.Name) .. " 已存入背包"
+	return "Success", "购买成功！" .. (item.RealName or item.Name) .. " 已存入背包", {
+		CanUseNow = true,
+		ItemKey = itemKey,
+		ItemName = item.RealName or item.Name,
+		EffectType = item.EffectType,
+		EffectValue = item.EffectValue,
+	}
 end
 
 
@@ -241,9 +247,6 @@ end
 -- isMeditating: 打坐状态效果 x1.5
 -- ============================================================
 function ShopService:UseItem(player, itemKey, isMeditating)
-	if not isMeditating then
-		return { Success = false, Message = "丹药需在打坐时炼化" }
-	end
 	local data = DataManager:GetData(player)
 	if not data then return { Success = false, Message = "数据未加载" } end
 	local backpack = data.Backpack or {}
@@ -285,6 +288,46 @@ function ShopService:UseItem(player, itemKey, isMeditating)
 	return { Success = true, Message = "使用成功" }
 end
 
+-- ============================================================
+-- 睡前使用物品（2x 效果，不检查打坐状态）
+-- ============================================================
+function ShopService:UseItemBeforeSleep(player, itemKey)
+	local data = DataManager:GetData(player)
+	if not data then return { Success = false } end
+	local backpack = data.Backpack or {}
+	local count = backpack[itemKey] or 0
+	if count <= 0 then return { Success = false } end
+	local item = DanConfig.Items[itemKey]
+	if not item then return { Success = false } end
+	backpack[itemKey] = count - 1
+	if backpack[itemKey] <= 0 then backpack[itemKey] = nil end
+	data.Backpack = backpack
+	DataManager:UpdateField(player, "Backpack", backpack)
+	local effectValue = item.EffectValue * 2  -- 2x for before-sleep
+	local effectType = item.EffectType
+	if effectType == "Stamina" or effectType == "Spirit"
+		or effectType == "Fatigue" or effectType == "FirePoison"
+		or effectType == "Malice" then
+		local costs = {}
+		costs[effectType] = effectValue
+		StatusService:ApplyCosts(player, costs)
+	elseif effectType == "AgilityExp" then
+		StatusService:AddExp(player, "Agility", effectValue)
+	elseif effectType == "AlchemyExp" then
+		StatusService:AddExp(player, "AlchemyLv", effectValue)
+	elseif effectType == "CombatExp" then
+		StatusService:AddExp(player, "Combat", effectValue)
+	elseif effectType == "RandomStat" then
+		local stats = { "Agility", "AlchemyLv", "Combat" }
+		local chosen = stats[math.random(1, #stats)]
+		StatusService:AddExp(player, chosen, effectValue)
+	elseif effectType == "AllStats" then
+		StatusService:AddExp(player, "Agility", effectValue)
+		StatusService:AddExp(player, "AlchemyLv", effectValue)
+		StatusService:AddExp(player, "Combat", effectValue)
+	end
+	return { Success = true }
+end
 
 -- ============================================================
 -- 监听客户端请求
@@ -364,7 +407,7 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		local itemKey = contextData and contextData.ItemKey
 		if not itemKey then return end
 
-		local result, message = ShopService:Purchase(player, itemKey)
+		local result, message, extra = ShopService:Purchase(player, itemKey)
 
 		-- 返回购买结果及更新后的仙晶余额
 		local data = DataManager:GetData(player)
@@ -375,7 +418,12 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			Message = message,
 			XianJing = data and data.XianJing or 0,
 			DailyPurchases = data and data.DailyPurchases or {},
-				Backpack = data and data.Backpack or {},
+			Backpack = data and data.Backpack or {},
+			CanUseNow = extra and extra.CanUseNow,
+			ItemKey = extra and extra.ItemKey,
+			ItemName = extra and extra.ItemName,
+			EffectType = extra and extra.EffectType,
+			EffectValue = extra and extra.EffectValue,
 		})
 		return
 	end

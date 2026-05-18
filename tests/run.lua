@@ -453,6 +453,69 @@ describe("SleepLogic 纯逻辑", function()
 	end)
 end)
 
+-- ----- HomeEntryTracker 纯逻辑 -----
+describe("HomeEntryTracker 进入次数追踪", function()
+	local HomeEntryTracker = require("../ReplicatedStorage/Shared/Modules/HomeEntryTracker")
+
+	it("Reset 创建条目", function()
+		local player = { UserId = 1001 }
+		HomeEntryTracker.Reset(player)
+		local u = HomeEntryTracker._getUsage(player.UserId)
+		expect.ok(u ~= nil, "Reset 后应有条目")
+		expect.not_ok(u.Meditated, "Meditated 初始为 false")
+		expect.not_ok(u.Slept, "Slept 初始为 false")
+		expect.not_ok(u.Prayed, "Prayed 初始为 false")
+	end)
+
+	it("Reset 后 CanUse 返回 true", function()
+		local player = { UserId = 1002 }
+		HomeEntryTracker.Reset(player)
+		expect.ok(HomeEntryTracker.CanUse(player, "Meditated"), "Meditated 可用")
+		expect.ok(HomeEntryTracker.CanUse(player, "Slept"), "Slept 可用")
+		expect.ok(HomeEntryTracker.CanUse(player, "Prayed"), "Prayed 可用")
+	end)
+
+	it("MarkUsed 后 CanUse 返回 false", function()
+		local player = { UserId = 1003 }
+		HomeEntryTracker.Reset(player)
+		HomeEntryTracker.MarkUsed(player, "Meditated")
+		expect.not_ok(HomeEntryTracker.CanUse(player, "Meditated"), "Meditated 不可用")
+		expect.ok(HomeEntryTracker.CanUse(player, "Slept"), "Slept 仍可用")
+	end)
+
+	it("不同 action 独立追踪", function()
+		local player = { UserId = 1004 }
+		HomeEntryTracker.Reset(player)
+		HomeEntryTracker.MarkUsed(player, "Meditated")
+		HomeEntryTracker.MarkUsed(player, "Slept")
+		expect.not_ok(HomeEntryTracker.CanUse(player, "Meditated"), "Meditated 不可用")
+		expect.not_ok(HomeEntryTracker.CanUse(player, "Slept"), "Slept 不可用")
+		expect.ok(HomeEntryTracker.CanUse(player, "Prayed"), "Prayed 仍可用")
+	end)
+
+	it("不同玩家独立追踪", function()
+		local p1 = { UserId = 1005 }
+		local p2 = { UserId = 1006 }
+		HomeEntryTracker.Reset(p1)
+		HomeEntryTracker.Reset(p2)
+		HomeEntryTracker.MarkUsed(p1, "Slept")
+		expect.not_ok(HomeEntryTracker.CanUse(p1, "Slept"), "p1 Slept 不可用")
+		expect.ok(HomeEntryTracker.CanUse(p2, "Slept"), "p2 Slept 仍可用")
+	end)
+
+	it("未 Reset 的玩家 CanUse 返回 false", function()
+		local player = { UserId = 9999 }
+		expect.not_ok(HomeEntryTracker.CanUse(player, "Meditated"), "未 Reset 返回 false")
+	end)
+
+	it("未 Reset 的玩家 MarkUsed 无副作用", function()
+		local player = { UserId = 9998 }
+		-- 不应崩溃
+		HomeEntryTracker.MarkUsed(player, "Meditated")
+		expect.ok(true, "未 Reset 调用 MarkUsed 不应报错")
+	end)
+end)
+
 -- ====== 汇总报告 ======
 print("\n" .. "=" .. string.rep("=", 55))
 print(string.format("📊 结果: %d 通过, %d 失败", results.passed, results.failed))
