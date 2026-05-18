@@ -237,7 +237,6 @@ function ShopService:Purchase(player, itemKey)
 		ItemName = item.RealName or item.Name,
 		EffectType = item.EffectType,
 		EffectValue = item.EffectValue,
-		Description = item.RealDescription or item.Description,
 	}
 end
 
@@ -289,23 +288,22 @@ function ShopService:UseItem(player, itemKey, isMeditating)
 	return { Success = true, Message = "使用成功" }
 end
 
-
 -- ============================================================
--- 睡前服用（消耗背包，效果 x2）
+-- 睡前使用物品（2x 效果，不检查打坐状态）
 -- ============================================================
 function ShopService:UseItemBeforeSleep(player, itemKey)
 	local data = DataManager:GetData(player)
-	if not data then return { Success = false, Message = "数据未加载" } end
+	if not data then return { Success = false } end
 	local backpack = data.Backpack or {}
 	local count = backpack[itemKey] or 0
-	if count <= 0 then return { Success = false, Message = "背包中没有该物品" } end
+	if count <= 0 then return { Success = false } end
 	local item = DanConfig.Items[itemKey]
-	if not item then return { Success = false, Message = "未知物品" } end
+	if not item then return { Success = false } end
 	backpack[itemKey] = count - 1
 	if backpack[itemKey] <= 0 then backpack[itemKey] = nil end
 	data.Backpack = backpack
 	DataManager:UpdateField(player, "Backpack", backpack)
-	local effectValue = item.EffectValue * 2
+	local effectValue = item.EffectValue * 2  -- 2x for before-sleep
 	local effectType = item.EffectType
 	if effectType == "Stamina" or effectType == "Spirit"
 		or effectType == "Fatigue" or effectType == "FirePoison"
@@ -328,10 +326,8 @@ function ShopService:UseItemBeforeSleep(player, itemKey)
 		StatusService:AddExp(player, "AlchemyLv", effectValue)
 		StatusService:AddExp(player, "Combat", effectValue)
 	end
-	print("睡前服药: " .. player.Name .. " " .. (item.RealName or item.Name) .. " x2")
-	return { Success = true, Message = "睡前服用效果x2" }
+	return { Success = true }
 end
-
 
 -- ============================================================
 -- 监听客户端请求
@@ -428,7 +424,6 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 			ItemName = extra and extra.ItemName,
 			EffectType = extra and extra.EffectType,
 			EffectValue = extra and extra.EffectValue,
-			Description = extra and extra.Description,
 		})
 		return
 	end

@@ -4,17 +4,25 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
-local ShopEvent = ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("ShopEvent")
 local AnimationFactory = require(ReplicatedStorage.Shared.Modules.AnimationFactory)
 local BreathUI = {}
 local isActive, isHolding, inhaleStartTime, holdStartTime, breathCount, malAdjust, currentTrack
-local screenGui, outerRing, phaseLabel, feedbackLabel, breathCounter, backpackFrame
+local screenGui, outerRing, phaseLabel, feedbackLabel, breathCounter, settleLabel
 local confirmFrame
 
 local EXPAND_DURATION = 2.0
 local HOLD_DURATION = 2.0
 local TOTAL_BREATHS = 3
-local MIN_INHALE_TIME = 1.0  -- 气球够大才能按 F
+local MIN_INHALE_TIME = 1.0
+
+-- 本地预计算收益显示（仅用于 5 秒站定提示，实际结算以服务器为准）
+local function calcBenefitPreview()
+	local mult = 1.5 * (1 + 3 * 0.3)
+	local stamina = math.floor(3 * mult)
+	local spirit = math.floor(6 * mult)
+	local fatigue = math.floor(2 * mult)
+	return stamina, spirit, fatigue
+end
 
 function BreathUI:CreateUI()
 	screenGui = Instance.new("ScreenGui")
@@ -65,19 +73,17 @@ function BreathUI:CreateUI()
 	breathCounter.TextColor3 = Color3.fromRGB(150, 200, 255)
 	breathCounter.TextSize = 14
 	breathCounter.Parent = screenGui
-	backpackFrame = Instance.new("Frame")
-	backpackFrame.Size = UDim2.new(0, 120, 0, 300)
-	backpackFrame.Position = UDim2.new(0, 10, 0.5, -150)
-	backpackFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-	backpackFrame.BackgroundTransparency = 0.3
-	backpackFrame.Parent = screenGui
-	local bpLabel = Instance.new("TextLabel")
-	bpLabel.Size = UDim2.new(1, 0, 0, 24)
-	bpLabel.BackgroundTransparency = 1
-	bpLabel.Text = "丹药"
-	bpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	bpLabel.TextSize = 14
-	bpLabel.Parent = backpackFrame
+
+	-- 入定结算标签（用于 5 秒站定展示）
+	settleLabel = Instance.new("TextLabel")
+	settleLabel.Size = UDim2.new(0, 300, 0, 60)
+	settleLabel.Position = UDim2.new(0.5, -150, 0.5, -30)
+	settleLabel.BackgroundTransparency = 1
+	settleLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
+	settleLabel.TextSize = 20
+	settleLabel.Font = Enum.Font.SourceSansBold
+	settleLabel.Visible = false
+	settleLabel.Parent = screenGui
 
 	-- 确认弹窗：是否打坐？
 	confirmFrame = Instance.new("Frame")
@@ -126,6 +132,7 @@ function BreathUI:CreateUI()
 	makeConfirmBtn("取消", 30, Color3.fromRGB(80, 80, 100), function()
 		confirmFrame.Visible = false
 		screenGui.Enabled = false
+		rejectTime = tick()
 	end)
 	makeConfirmBtn("打坐", 170, Color3.fromRGB(60, 120, 200), function()
 		confirmFrame.Visible = false
@@ -133,7 +140,34 @@ function BreathUI:CreateUI()
 	end)
 
 	BreathUI:Hide()
+
+	-- 使用单独的 OnClientEvent 连接
 end
+
+-- 将事件监听放在 CreateUI 之后，确保 settleLabel 已存在
+local rejectTime = 0
+HomeEvent.OnClientEvent:Connect(function(action, data)
+	if action == "StartMeditation" then
+		if rejectTime > 0 and tick() - rejectTime < 5 then
+			return  -- 5 秒内不再弹窗
+		end
+		if screenGui then
+			screenGui.Enabled = true
+			if confirmFrame then confirmFrame.Visible = true end
+		end
+	elseif action == "BreathSettlement" then
+		if settleLabel then
+			settleLabel.Visible = false
+		end
+		-- 显示服务器返回的结算
+		if feedbackLabel then
+			feedbackLabel.Text = string.format("入定完成！体力+%d 精神+%d", data.Stamina or 0, data.Spirit or 0)
+			feedbackLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+		end
+		task.wait(2)
+		BreathUI:End()
+	end
+end)
 
 function BreathUI:Start()
 	screenGui.Enabled = true
@@ -142,6 +176,7 @@ function BreathUI:Start()
 	breathCount = 0
 	breathCounter.Text = "呼吸 0/" .. TOTAL_BREATHS
 	feedbackLabel.Text = ""
+	settleLabel.Visible = false
 	local malice = player:GetAttribute("Malice") or 0
 	malAdjust = 1.0
 	if malice > 50 then BreathUI:Hide(); return end
@@ -155,7 +190,6 @@ function BreathUI:Start()
 			humanoid.AutoRotate = false
 		end
 	end
-	HomeEvent:FireServer("GetBackpack")
 	BreathUI:StartInhale()
 end
 
@@ -164,6 +198,7 @@ function BreathUI:Hide()
 	isHolding = false
 	if screenGui then screenGui.Enabled = false end
 	if confirmFrame then confirmFrame.Visible = false end
+	if settleLabel then settleLabel.Visible = false end
 end
 
 function BreathUI:StartInhale()
@@ -182,11 +217,24 @@ function BreathUI:CompleteBreath()
 	breathCount = breathCount + 1
 	breathCounter.Text = "呼吸 " .. breathCount .. "/" .. TOTAL_BREATHS
 	if breathCount >= TOTAL_BREATHS then
-		feedbackLabel.Text = "入定成功！"
-		phaseLabel.Text = "完成"
+		-- 3 轮完成：显示入定，5 秒站定
+		phaseLabel.Text = "入定"
+		feedbackLabel.Text = ""
+		breathCounter.Text = ""
+		outerRing.Visible = false
+
+		-- 预显收益
+		local s, sp, f = calcBenefitPreview()
+		settleLabel.Text = string.format("入定中...\n体力 +%d  精神 +%d  疲劳 -%d", s, sp, f)
+		settleLabel.Visible = true
+
+		-- 5 秒站定（WalkSpeed 保持 0）
+		task.wait(5)
+
+		-- 发送给服务器结算
+		settleLabel.Text = "入定完成！"
 		HomeEvent:FireServer("BreathResult", { Judgment = "perfect", Layer = 3 })
-		task.wait(2)
-		BreathUI:End()
+		-- BreathSettlement 事件由 OnClientEvent 处理
 	else
 		feedbackLabel.Text = "呼吸法完成！（" .. breathCount .. "/" .. TOTAL_BREATHS .. "）"
 		phaseLabel.Text = "呼气"
@@ -221,10 +269,9 @@ task.spawn(function()
 	end
 end)
 
--- 输入处理（连接一次永不断开，用 isActive 控制）
+-- 输入处理
 UserInputService.InputBegan:Connect(function(input, gp)
 	if gp then return end
-	-- Q 键：无论是否冥想中，只要界面可见就退出
 	if input.KeyCode == Enum.KeyCode.Q then
 		if isActive or (confirmFrame and confirmFrame.Visible) then
 			BreathUI:End()
@@ -260,37 +307,6 @@ end)
 -- 切换场景自动退出
 player:GetAttributeChangedSignal("CurrentScene"):Connect(function()
 	if isActive then BreathUI:End() end
-end)
-
-HomeEvent.OnClientEvent:Connect(function(action, data)
-	if action == "StartMeditation" then
-		screenGui.Enabled = true
-		confirmFrame.Visible = true
-	elseif action == "BackpackData" then
-		for _, child in ipairs(backpackFrame:GetChildren()) do
-			if child:IsA("TextButton") then child:Destroy() end
-		end
-		local y = 30
-		for itemKey, count in pairs(data.Backpack or {}) do
-			if count <= 0 then continue end
-			local btn = Instance.new("TextButton")
-			btn.Name = itemKey
-			btn.Size = UDim2.new(1, -10, 0, 28)
-			btn.Position = UDim2.new(0, 5, 0, y)
-			btn.Text = itemKey .. " x" .. count
-			btn.BackgroundColor3 = Color3.fromRGB(40, 50, 70)
-			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-			btn.TextSize = 12
-			btn.Parent = backpackFrame
-			btn.MouseButton1Click:Connect(function()
-				if not isActive then return end
-				ShopEvent:FireServer("UseItem:Shop", nil, { ItemKey = itemKey, IsMeditating = true })
-				task.wait(0.3)
-				HomeEvent:FireServer("GetBackpack")
-			end)
-			y = y + 32
-		end
-	end
 end)
 
 BreathUI:CreateUI()

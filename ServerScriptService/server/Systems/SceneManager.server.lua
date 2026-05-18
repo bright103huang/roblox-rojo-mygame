@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(script.Parent.DataManager)
 local SpeedCalculator = require(script.Parent.SpeedCalculator)
+local HomeEntryTracker = require(ReplicatedStorage.Shared.Modules.HomeEntryTracker)
 
 -- 不区分大小写查找
 local function findChildNoCase(parent, name)
@@ -73,6 +74,10 @@ local function teleportToScene(player, sceneName)
 	hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 	DataManager:UpdateField(player, "CurrentScene", sceneName)
 
+	-- 进入 Home 场景时重置三项活动的可用次数
+	if sceneName == "Home" then
+		HomeEntryTracker.Reset(player)
+	end
 
 	print("🚀 传送玩家 " .. player.Name .. " 到场景：" .. sceneName)
 	return true
@@ -107,6 +112,11 @@ local function onPlayerAdded(player)
 		local hum = char:WaitForChild("Humanoid")
 		if hum then hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false) end
 		hrp.CFrame = CFrame.new(getSceneSpawnPosition(scene))
+
+		-- 出生在 Home 场景时重置可用次数
+		if scene == "Home" then
+			HomeEntryTracker.Reset(player)
+		end
 
 		-- 同步属性到 Attributes
 		player:SetAttribute("IsRecruited", data.IsRecruited or false)

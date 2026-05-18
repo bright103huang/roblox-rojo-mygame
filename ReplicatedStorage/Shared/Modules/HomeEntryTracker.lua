@@ -1,10 +1,3 @@
--- ============================================================
--- 文件：ReplicatedStorage.Shared.Modules.HomeEntryTracker.lua
--- 功能：追踪玩家每次进入 Home 场景时各活动的使用状态
--- 用途：HomeServer 和 SceneManager 通过 require() 引用
--- 状态：每进一次 Home 场景，由 SceneManager 调用 Reset()
--- ============================================================
-
 local HomeEntryTracker = {}
 local usage = {}  -- [userId] = { Meditated = bool, Slept = bool, Prayed = bool }
 
@@ -13,13 +6,19 @@ function HomeEntryTracker.Reset(player)
 end
 
 function HomeEntryTracker.CanUse(player, action)
+	-- action: "Meditated", "Slept", or "Prayed"
 	local u = usage[player.UserId]
-	return u and not u[action] or false
+	return u and not u[action]
 end
 
 function HomeEntryTracker.MarkUsed(player, action)
 	local u = usage[player.UserId]
 	if u then u[action] = true end
+end
+
+-- Test helper: expose internal state for TDD assertions
+function HomeEntryTracker._getUsage(userId)
+	return usage[userId]
 end
 
 return HomeEntryTracker
