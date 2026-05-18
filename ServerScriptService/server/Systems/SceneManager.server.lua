@@ -73,6 +73,7 @@ local function teleportToScene(player, sceneName)
 	hrp.Velocity = Vector3.new(0, 0, 0)
 	hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 	DataManager:UpdateField(player, "CurrentScene", sceneName)
+	SpeedCalculator.Apply(player)
 
 	-- 进入 Home 场景时重置三项活动的可用次数
 	if sceneName == "Home" then

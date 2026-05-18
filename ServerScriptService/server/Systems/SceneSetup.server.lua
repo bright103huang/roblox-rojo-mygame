@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(script.Parent.DataManager)
 local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
+local HomeEntryTracker = require(ReplicatedStorage.Shared.Modules.HomeEntryTracker)
 local TimeService = nil  -- 延迟加载，避免循环依赖
 
 local function getTimeModifier()
@@ -767,6 +768,7 @@ local function setupHomeScene()
 			print("😤 " .. player.Name .. " 戾气过重，无法打坐")
 			return
 		end
+		if not HomeEntryTracker.CanUse(player, "Meditated") then return end
 		cushionDebounce[player.UserId] = true
 		task.delay(1, function() cushionDebounce[player.UserId] = nil end)
 		HomeEvent:FireClient(player, "StartMeditation")
@@ -790,12 +792,9 @@ local function setupHomeScene()
 		if not player then return end
 		if bedDebounce[player.UserId] then return end
 		local data = DataManager and DataManager:GetData(player)
-		if data and data.LastSleptDay == os.date("%Y%m%d") then
-			print("😴 " .. player.Name .. " 今日已睡过")
-			return
-		end
 		bedDebounce[player.UserId] = true
 		task.delay(1, function() bedDebounce[player.UserId] = nil end)
+		if not HomeEntryTracker.CanUse(player, "Slept") then return end
 		HomeEvent:FireClient(player, "StartSleep")
 	end)
 
@@ -819,10 +818,8 @@ local function setupHomeScene()
 		if prayerDebounce[player.UserId] then return end
 		local data = DataManager and DataManager:GetData(player)
 		if not data then return end
-		if data.LastPrayerDate == os.date("%Y%m%d") then
-			return
-		end
 		prayerDebounce[player.UserId] = true
+		if not HomeEntryTracker.CanUse(player, "Prayed") then return end
 		task.delay(1, function() prayerDebounce[player.UserId] = nil end)
 		HomeEvent:FireClient(player, "ShowPrayer")
 	end)

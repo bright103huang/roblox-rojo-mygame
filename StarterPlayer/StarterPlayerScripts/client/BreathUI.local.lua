@@ -186,9 +186,13 @@ function BreathUI:Start()
 		local humanoid = char:FindFirstChild("Humanoid")
 		if humanoid then
 			currentTrack = AnimationFactory:PlayAnimation(humanoid, AnimationFactory:CreateSitSequence())
+			self._savedWalkSpeed = humanoid.WalkSpeed
 			humanoid.WalkSpeed = 0
 			humanoid.AutoRotate = false
 		end
+	end
+	if not self._savedWalkSpeed then
+		self._savedWalkSpeed = 16
 	end
 	BreathUI:StartInhale()
 end
@@ -250,7 +254,7 @@ function BreathUI:End()
 		local humanoid = char:FindFirstChild("Humanoid")
 		if humanoid then
 			humanoid.AutoRotate = true
-			humanoid.WalkSpeed = 16
+			humanoid.WalkSpeed = self._savedWalkSpeed or 16
 		end
 	end
 	BreathUI:Hide()

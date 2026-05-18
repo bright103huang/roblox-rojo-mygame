@@ -182,6 +182,7 @@ function ShopUI:Create()
 	uiRefs.resultPopup = resultFrame
 	uiRefs.resultTitle = resultTitle
 	uiRefs.resultMsg = resultMessage
+	ShopUI:CreateBargainPopup(screenGui)
 
 	-- 关闭按钮
 	local closeBtn = Instance.new("TextButton")

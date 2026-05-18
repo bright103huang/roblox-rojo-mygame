@@ -5,9 +5,48 @@ local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
 local DataManager = require(script.Parent.DataManager)
 local StatusService = require(script.Parent.StatusService)
 local StatsConfig = require(ReplicatedStorage.Shared.Config.StatsConfig)
+local DanConfig = require(ReplicatedStorage.Shared.Config.DanConfig)
 local TimeService = require(script.Parent.TimeService)
 local HomeEntryTracker = require(ReplicatedStorage.Shared.Modules.HomeEntryTracker)
-local ShopService = require(script.Parent.ShopService)
+local SpeedCalculator = require(script.Parent.SpeedCalculator)
+
+-- 睡前服用丹药（2x效果，内联自 ShopService.UseItemBeforeSleep）
+local function usePillBeforeSleep(player, itemKey)
+	local data = DataManager:GetData(player)
+	if not data then return end
+	local backpack = data.Backpack or {}
+	local count = backpack[itemKey] or 0
+	if count <= 0 then return end
+	local item = DanConfig.Items[itemKey]
+	if not item then return end
+	backpack[itemKey] = count - 1
+	if backpack[itemKey] <= 0 then backpack[itemKey] = nil end
+	data.Backpack = backpack
+	DataManager:UpdateField(player, "Backpack", backpack)
+	local effectValue = item.EffectValue * 2
+	local effectType = item.EffectType
+	if effectType == "Stamina" or effectType == "Spirit"
+		or effectType == "Fatigue" or effectType == "FirePoison"
+		or effectType == "Malice" then
+		local costs = {}
+		costs[effectType] = effectValue
+		StatusService:ApplyCosts(player, costs)
+	elseif effectType == "AgilityExp" then
+		StatusService:AddExp(player, "Agility", effectValue)
+	elseif effectType == "AlchemyExp" then
+		StatusService:AddExp(player, "AlchemyLv", effectValue)
+	elseif effectType == "CombatExp" then
+		StatusService:AddExp(player, "Combat", effectValue)
+	elseif effectType == "RandomStat" then
+		local stats = { "Agility", "AlchemyLv", "Combat" }
+		local chosen = stats[math.random(1, #stats)]
+		StatusService:AddExp(player, chosen, effectValue)
+	elseif effectType == "AllStats" then
+		StatusService:AddExp(player, "Agility", effectValue)
+		StatusService:AddExp(player, "AlchemyLv", effectValue)
+		StatusService:AddExp(player, "Combat", effectValue)
+	end
+end
 
 -- Meditation recovery handlers
 HomeEvent.OnServerEvent:Connect(function(player, action, data)
@@ -26,6 +65,7 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 
 		StatusService:ApplyCosts(player, { Stamina = stamina, Spirit = spirit, Fatigue = -fatigue })
 		HomeEntryTracker.MarkUsed(player, "Meditated")
+		SpeedCalculator.Apply(player)
 		HomeEvent:FireClient(player, "BreathSettlement", { Stamina = stamina, Spirit = spirit })
 
 	elseif action == "GetBackpack" then
@@ -41,16 +81,14 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 		local hasPills = data.Pills and #data.Pills > 0
 		local mult = hasPills and StatsConfig.SLEEP.PillMultiplier or 1
 
-		-- Save old values for delta calculation
 		local oldStamina = plrData.Stamina
 		local oldSpirit = plrData.Spirit
 		local oldFatigue = plrData.Fatigue
 		local oldMalice = plrData.Malice
 
-		-- Apply pill effects first (2x each)
 		if hasPills then
 			for _, pillKey in ipairs(data.Pills or {}) do
-				ShopService:UseItemBeforeSleep(player, pillKey)
+				usePillBeforeSleep(player, pillKey)
 			end
 		end
 
@@ -78,7 +116,10 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 		HomeEvent:FireClient(player, "SleepSettlement", { Message = msg })
 
 	elseif action == "PrayerChoice" then
-		if not HomeEntryTracker.CanUse(player, "Prayed") then return end
+		if not HomeEntryTracker.CanUse(player, "Prayed") then
+			HomeEvent:FireClient(player, "PrayerResult", { Success = false, Message = "今日已祈福过" })
+			return
+		end
 		local plrData = DataManager:GetData(player)
 		if not plrData then return end
 

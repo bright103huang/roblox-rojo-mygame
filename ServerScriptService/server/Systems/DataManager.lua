@@ -136,6 +136,8 @@ function DataManager:InitPlayer(player)
 		if gold then gold.Value = data.XianJing end
 		local merit = leaderstats:FindFirstChild("功德")
 		if merit then merit.Value = data.GongDe end
+	else
+		warn("DataManager:InitPlayer 未找到 leaderstats 文件夹！")
 	end
 
 	-- 同步所有即时状态为 Attribute（客户端可读）
@@ -177,6 +179,8 @@ function DataManager:UpdateField(player, field, value)
 			if stat then
 				stat.Value = value
 			end
+		else
+			warn("DataManager:UpdateField 未找到 leaderstats 文件夹！")
 		end
 	elseif field == "Agility" or field == "AlchemyLv" or field == "Combat" then
 		-- 永久属性等级同步到 Attribute（StatusUI 读取）
