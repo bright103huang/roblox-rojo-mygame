@@ -7,15 +7,25 @@ local SceneGuideUI = {}
 
 function SceneGuideUI.Show(sceneName)
 	local content = SceneGuideContent[sceneName]
-	if not content then return end
+	if not content then
+		warn("SceneGuideUI: unknown scene '" .. tostring(sceneName) .. "'")
+		return
+	end
 
 	local player = Players.LocalPlayer
 	local playerGui = player:WaitForChild("PlayerGui")
 
+	-- cleanup existing guide popups for any scene
+	for _, gui in ipairs(playerGui:GetChildren()) do
+		if gui.Name:sub(1, 11) == "SceneGuide_" then
+			gui:Destroy()
+		end
+	end
+
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "SceneGuide_" .. sceneName
 	screenGui.ResetOnSpawn = false
-	screenGui.DisplayOrder = 100
+	screenGui.DisplayOrder = 200
 	screenGui.Parent = playerGui
 
 	-- backdrop
@@ -26,9 +36,10 @@ function SceneGuideUI.Show(sceneName)
 	backdrop.Parent = screenGui
 
 	-- main window frame
+	local totalHeight = 90 + #content.lines * 26
 	local mainFrame = Instance.new("Frame")
-	mainFrame.Size = UDim2.new(0, 350, 0, 50 + #content.lines * 28)
-	mainFrame.Position = UDim2.new(0.5, -175, 0.5, -(25 + #content.lines * 14))
+	mainFrame.Size = UDim2.new(0, 350, 0, totalHeight)
+	mainFrame.Position = UDim2.new(0.5, -175, 0.5, -totalHeight / 2)
 	mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
 	mainFrame.BackgroundTransparency = 0.2
 	mainFrame.Parent = screenGui
