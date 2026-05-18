@@ -258,16 +258,6 @@ local function setupYiShanFangScene()
 	-- ============================================================
 	-- 场景引导提示（吐槽风）
 	-- ============================================================
-	createHintBoard(
-		origin + Vector3.new(-80, 4, 0),
-		"① 左边取桃→右边送——送错桌明天喂妖兽",
-		BrickColor.new("Bright yellow")
-	)
-	createHintBoard(
-		origin + Vector3.new(50, 4, 0),
-		"② 送到即结算——干得好加鸡腿，干不好……你懂的",
-		BrickColor.new("Bright green")
-	)
 
 	print("🍽️ 御膳房已就绪（取餐处: x=-80, 桌子: x=-50~50, 地板 170 宽）")
 end
@@ -353,32 +343,6 @@ local function setupAlchemyScene()
 	-- ============================================================
 
 	-- 灵草台提示
-	createHintBoard(
-		origin + Vector3.new(-10, 4, 0),
-		"① 灵草台薅羊毛——药材随便拿不要钱",
-		BrickColor.new("Bright green")
-	)
-
-	-- 柴火堆提示
-	createHintBoard(
-		origin + Vector3.new(10, 4, 0),
-		"② 柴火堆搬砖——点火就靠你了",
-		BrickColor.new("Bright orange")
-	)
-
-	-- 丹炉提示
-	createHintBoard(
-		origin + Vector3.new(0, 6, 0),
-		"③ 添柴×3 赌一把——成丹血赚，炸炉不亏",
-		BrickColor.new("Bright orange")
-	)
-
-	-- 流程指示
-	createHintBoard(
-		origin + Vector3.new(-5, 2.5, 0),
-		"← 薅药材  炉子 →\n搬柴火",
-		BrickColor.new("Bright yellow")
-	)
 
 	-- ============================================================
 	-- 药材名称标签（装饰用）
@@ -562,15 +526,6 @@ local function setupBeastScene()
 	-- ============================================================
 	-- 场景引导提示
 	-- ============================================================
-	createHintBoard(origin + Vector3.new(0, 6, 0),
-		"① 踏入中央红区→召唤妖兽，跑都跑不掉",
-		BrickColor.new("Really red"))
-	createHintBoard(origin + Vector3.new(-28, 5, 0),
-		"② 走近妖兽→自动碰瓷，连撞三次定胜负",
-		BrickColor.new("Bright blue"))
-	createHintBoard(origin + Vector3.new(28, 5, 0),
-		"③ 打不过就跑，30秒后妖兽自己下班",
-		BrickColor.new("Bright green"))
 
 	print("🏟️ 角斗场已就绪（140x12 沙地 + 12高背景墙 + 前低围栏 + 拱廊看台）")
 end
@@ -694,12 +649,6 @@ local function setupShopScene()
 	-- ============================================================
 	-- 场景引导提示
 	-- ============================================================
-	createHintBoard(origin + Vector3.new(-3, 5, 0),
-		"① 站上金色光圈 → 打开丹药铺",
-		BrickColor.new("Gold"))
-	createHintBoard(origin + Vector3.new(10, 5, 0),
-		"② 点击「砍价」按钮可议价",
-		BrickColor.new("Bright blue"))
 
 	-- 不可见边缘碰撞墙（防止走出地板掉入虚空）
 	createInvisibleWall(origin + Vector3.new(-40, 2, 0), 0.3, 8, 8)   -- 左墙，地板边缘 X=-40
@@ -915,134 +864,10 @@ local function setupHomeScene()
 
 		-- 场景引导提示（入口地图指引，放在出生点附近）
 		-- ============================================================
-		createHintBoard(origin + Vector3.new(-18, 10, 0),
-			"👈 左走祈福  |  🧘 中间打坐炼化  |  👉 右走大床睡觉",
-			BrickColor.new("Bright yellow"))
-
-		-- 打坐区说明（X=0 蒲团上方）
-		createHintBoard(origin + Vector3.new(0, 14, 0),
-			"① 气球变大→长按F 2秒→闭气完成 | 累计3次入定成功",
-			BrickColor.new("Gold"))
-		createHintBoard(origin + Vector3.new(0, 11, 0),
-			"② 中途松F需重新按住  |  按Q可提前退出",
-			BrickColor.new("Bright orange"))
-		createHintBoard(origin + Vector3.new(0, 8, 0),
-			"③ 戾气>50无法打坐  |  丹药可在打坐中炼化",
-			BrickColor.new("Bright yellow"))
-		-- 大床区说明
-		createHintBoard(origin + Vector3.new(15, 10, 0),
-			"④ 走上大床→睡觉 | 一日一次",
-			BrickColor.new("Bright yellow"))
 
 		print("🏠 家已就绪（50 宽：祈福区 | 屏风 | 打坐区 | 茶座 | 大床）")
 
-	local cultivationPart = createArea({
-		Name = "HomeCultivation",
-		Position = origin + Vector3.new(0, 1, 0),
-		Size = Vector3.new(3, 0.5, 3),
-		Color = BrickColor.new("Gold"),
-		Transparency = 0.2,
-		Label = "冥想炼化",
-	})
 
-	-- 冥想恢复逻辑
-	local meditating = {}  -- [userId] = true
-	cultivationPart.Touched:Connect(function(hit)
-		local char = hit.Parent
-		local player = Players:GetPlayerFromCharacter(char)
-		if not player then return end
-		if meditating[player.UserId] then return end
-		-- 戾气 > 50 时不可冥想
-		local malice = player:GetAttribute("Malice") or 0
-		if malice > 50 then
-			local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
-			if eventsFolder then
-				local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
-				if taskEvent then
-					taskEvent:FireClient(player, "MeditationBlocked", { Reason = "戾气过重，无法入定" })
-				end
-			end
-			return
-		end
-
-		meditating[player.UserId] = true
-		player:SetAttribute("IsMeditating", true)
-		-- 冥想协程
-		task.spawn(function()
-			local maxDuration = 30  -- 最多冥想 30 秒
-			local elapsed = 0
-			while meditating[player.UserId] and elapsed < maxDuration do
-				task.wait(5)
-				elapsed += 5
-				-- 检查玩家是否还在附近（10 格内）
-				local char = player.Character
-				if not char then break end
-				local root = char:FindFirstChild("HumanoidRootPart")
-				if not root then break end
-				local dist = (root.Position - cultivationPart.Position).Magnitude
-				if dist > 10 then break end
-
-				-- 获取时辰恢复修正（深夜恢复更快）
-				local timeMod = getTimeModifier()
-				local restEff = timeMod.RestEff or 1.0
-
-				-- 应用恢复（基础值 × 时辰恢复修正）
-				local data = DataManager and DataManager:GetData(player)
-				if data then
-					local staminaGain = math.floor(3 * restEff)
-					local spiritGain = math.floor(3 * restEff)
-					local fatigueLoss = math.max(1, math.floor(1 * restEff))
-					data.Stamina = math.min(100, (data.Stamina or 0) + staminaGain)
-					data.Spirit = math.min(100, (data.Spirit or 0) + spiritGain)
-					data.Fatigue = math.max(0, (data.Fatigue or 0) - fatigueLoss)
-					DataManager:UpdateField(player, "Stamina", data.Stamina)
-					DataManager:UpdateField(player, "Spirit", data.Spirit)
-					DataManager:UpdateField(player, "Fatigue", data.Fatigue)
-				end
-			end
-			player:SetAttribute("IsMeditating", false)
-			meditating[player.UserId] = nil
-		end)
-	end)
-	-- 玩家离开时停止冥想
-	cultivationPart.ChildRemoved:Connect(function(child)
-		-- 不直接处理，由协程的距离检查处理
-	end)
-
-	-- 祈福台（每日功德）
-	local prayerPart = createArea({
-		Name = "PrayerAltar",
-		Position = origin + Vector3.new(-8, 1, 0),
-		Size = Vector3.new(2, 0.5, 2),
-		Color = BrickColor.new("Bright yellow"),
-		Transparency = 0.1,
-		Label = "祈福台（每日功德）",
-		Attrs = { PrayerReward = 5 },
-	})
-	local prayerDebounce = {}
-	prayerPart.Touched:Connect(function(hit)
-		local char = hit.Parent
-		local player = Players:GetPlayerFromCharacter(char)
-		if not player then return end
-		if prayerDebounce[player.UserId] then return end
-
-		-- 检查是否今日已祈福
-		local data = DataManager and DataManager:GetData(player)
-		if not data then return end
-		local todayKey = os.date("%Y%m%d")
-		if data.LastPrayerDate == todayKey then
-			return
-		end
-
-		prayerDebounce[player.UserId] = true
-		data.GongDe = (data.GongDe or 0) + 5
-		data.LastPrayerDate = todayKey
-		DataManager:UpdateField(player, "GongDe", data.GongDe)
-		print("🙏 " .. player.Name .. " 祈福获得 5 功德")
-
-		task.wait(1)
-		prayerDebounce[player.UserId] = nil
-	end)
 
 	-- 药架（z=-3 装饰层）
 	createDecor(origin + Vector3.new(-8, 1, -3), Vector3.new(3, 2.5, 0.5), BrickColor.new("Dark brown"), nil, Enum.Material.Wood)
