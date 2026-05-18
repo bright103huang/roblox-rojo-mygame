@@ -53,7 +53,7 @@ local SceneConfig = {
 	Home = {
 		DisplayName = "家",
 		Description = "服药打坐，炼化提升",
-		SpawnPosition = Vector3.new(-480, 3, 0),
+		SpawnPosition = Vector3.new(-493, 3, 0),
 		SceneType = "Home",
 		Icon = "🏠",
 	},
