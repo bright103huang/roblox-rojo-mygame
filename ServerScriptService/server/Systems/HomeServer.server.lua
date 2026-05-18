@@ -5,12 +5,15 @@ local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
 local DataManager = require(script.Parent.DataManager)
 local StatusService = require(script.Parent.StatusService)
 local StatsConfig = require(ReplicatedStorage.Shared.Config.StatsConfig)
-local SleepLogic = require(ReplicatedStorage.Shared.PureLogic.SleepLogic)
 local TimeService = require(script.Parent.TimeService)
+local HomeEntryTracker = require(ReplicatedStorage.Shared.Modules.HomeEntryTracker)
+local ShopService = require(script.Parent.ShopService)
 
 -- Meditation recovery handlers
 HomeEvent.OnServerEvent:Connect(function(player, action, data)
 	if action == "BreathResult" then
+		if not HomeEntryTracker.CanUse(player, "Meditated") then return end
+
 		local mult = StatsConfig.MEDITATION.NormalMultiplier
 		if data.Judgment == "perfect" then mult = StatsConfig.MEDITATION.PerfectMultiplier
 		elseif data.Judgment == "precise" then mult = StatsConfig.MEDITATION.PreciseMultiplier
@@ -23,6 +26,7 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 		local fatigue = math.max(1, math.floor(StatsConfig.MEDITATION.BaseFatigueLoss * totalMult))
 
 		StatusService:ApplyCosts(player, { Stamina = stamina, Spirit = spirit, Fatigue = -fatigue })
+		HomeEntryTracker.MarkUsed(player, "Meditated")
 		HomeEvent:FireClient(player, "BreathSettlement", { Stamina = stamina, Spirit = spirit })
 
 	elseif action == "GetBackpack" then
@@ -32,50 +36,46 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 	elseif action == "SleepComplete" then
 		local plrData = DataManager:GetData(player)
 		if not plrData then return end
+		if not HomeEntryTracker.CanUse(player, "Slept") then return end
 
-		local todayKey = os.date("%Y%m%d")
-		if plrData.LastSleptDay == todayKey then
-			HomeEvent:FireClient(player, "SleepSettlement", { Message = "今日已睡过" })
-			return
+		local hasPills = data.Pills and #data.Pills > 0
+		local mult = 1
+		if hasPills then
+			mult = StatsConfig.SLEEP.PillMultiplier
+			for _, pillKey in ipairs(data.Pills) do
+				ShopService:UseItemBeforeSleep(player, pillKey)
+			end
 		end
-		plrData.LastSleptDay = todayKey
-		DataManager:UpdateField(player, "LastSleptDay", todayKey)
 
-		local ratio = data.PeaceRatio or 0
-		local quality = SleepLogic.CalcSleepQuality(ratio, StatsConfig.SLEEP)
-		local recovery = SleepLogic.CalcSleepRecovery(quality, {
-			Stamina = plrData.Stamina,
-			Spirit = plrData.Spirit,
-			Fatigue = plrData.Fatigue,
-			Malice = plrData.Malice,
-		}, StatsConfig.SLEEP)
+		local staminaDelta = StatsConfig.SLEEP.BaseStaminaRecovery * mult
+		local spiritDelta = StatsConfig.SLEEP.BaseSpiritRecovery * mult
+		local fatigueDelta = StatsConfig.SLEEP.BaseFatigueLoss * mult
+		local maliceDelta = StatsConfig.SLEEP.BaseMaliceRecovery * mult
 
-		plrData.Stamina = recovery.Stamina
-		plrData.Spirit = recovery.Spirit
-		plrData.Fatigue = recovery.Fatigue
-		plrData.Malice = recovery.Malice
-		if recovery.Exp > 0 then
-			StatusService:AddExp(player, "Agility", recovery.Exp)
-		end
+		plrData.Stamina = math.min(100, plrData.Stamina + staminaDelta)
+		plrData.Spirit = math.min(100, plrData.Spirit + spiritDelta)
+		plrData.Fatigue = math.max(0, plrData.Fatigue - fatigueDelta)
+		plrData.Malice = math.max(0, plrData.Malice - maliceDelta)
 
 		DataManager:UpdateField(player, "Stamina", plrData.Stamina)
 		DataManager:UpdateField(player, "Spirit", plrData.Spirit)
 		DataManager:UpdateField(player, "Fatigue", plrData.Fatigue)
 		DataManager:UpdateField(player, "Malice", plrData.Malice)
 
+		HomeEntryTracker.MarkUsed(player, "Slept")
+
 		-- Advance time by 2 hours
 		TimeService:AdvanceHours(2)
-		HomeEvent:FireClient(player, "SleepSettlement", { Message = quality .. "。体力精神恢复" })
+
+		HomeEvent:FireClient(player, "SleepSettlement", {
+			Message = string.format("体力+%d 精神+%d 疲劳-%d 戾气-%d",
+				staminaDelta, spiritDelta, fatigueDelta, maliceDelta),
+		})
 
 	elseif action == "PrayerChoice" then
 		local plrData = DataManager:GetData(player)
 		if not plrData then return end
-
-		local todayKey = os.date("%Y%m%d")
-		if plrData.LastPrayerDate == todayKey then
-			HomeEvent:FireClient(player, "PrayerResult", { Success = false, Message = "今日已祈福" })
-			return
-		end
+		if not HomeEntryTracker.CanUse(player, "Prayed") then return end
 
 		local option = data.Option
 		local cost, gongde, maliceReduce, spiritBonus, expAmount = 0, 0, 0, 0, 0
@@ -95,13 +95,11 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 			return
 		end
 
-		plrData.LastPrayerDate = todayKey
 		plrData.PrayerOption = option
 		plrData.XianJing = (plrData.XianJing or 0) - cost
 		plrData.GongDe = (plrData.GongDe or 0) + gongde
 		plrData.Malice = math.max(0, (plrData.Malice or 0) - maliceReduce)
 		plrData.Spirit = math.min(100, (plrData.Spirit or 0) + spiritBonus)
-		DataManager:UpdateField(player, "LastPrayerDate", todayKey)
 		DataManager:UpdateField(player, "PrayerOption", option)
 		DataManager:UpdateField(player, "XianJing", plrData.XianJing)
 		DataManager:UpdateField(player, "GongDe", plrData.GongDe)
@@ -112,6 +110,7 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 			StatusService:AddExp(player, "Agility", expAmount)
 		end
 
+		HomeEntryTracker.MarkUsed(player, "Prayed")
 		HomeEvent:FireClient(player, "PrayerResult", { Success = true, Message = "祈福成功！功德+" .. gongde })
 	end
 end)

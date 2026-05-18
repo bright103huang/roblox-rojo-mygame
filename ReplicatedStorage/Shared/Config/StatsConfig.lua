@@ -188,6 +188,12 @@ local StatsConfig = {
 		InsomniaFatigueLoss = 2,
 		ExpPerDeepSleep = 3,
 		ExpPerLightSleep = 1,
+		-- 新固定恢复数值（替代 SleepLogic 流程）
+		BaseStaminaRecovery = 30,
+		BaseSpiritRecovery = 15,
+		BaseFatigueLoss = 20,
+		BaseMaliceRecovery = 5,
+		PillMultiplier = 2,
 	},
 }
 
