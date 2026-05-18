@@ -166,41 +166,6 @@ local function createUnderFloor(position, spanX, spanZ)
 	part.Parent = workspace
 end
 
--- ============================================================
--- 工具：创建场景提示板
--- ============================================================
-local function createHintBoard(position, text, color)
-	local part = Instance.new("Part")
-	part.Name = "AlchemyHint"
-	part.Size = Vector3.new(6, 0.5, 0.5)
-	part.Position = position
-	part.Anchored = true
-	part.CanCollide = false
-	part.Transparency = 0.8
-	part.BrickColor = color or BrickColor.new("Bright blue")
-	part.Parent = workspace
-
-	local bb = Instance.new("BillboardGui")
-	bb.Name = "HintText"
-	bb.Parent = part
-	bb.Adornee = part
-	bb.Size = UDim2.new(0, 300, 0, 60)
-	bb.StudsOffset = Vector3.new(0, 3, 0)
-	bb.AlwaysOnTop = true
-	bb.MaxDistance = 500
-
-	local label = Instance.new("TextLabel")
-	label.Parent = bb
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.TextColor3 = Color3.new(1, 1, 0.8)
-	label.TextStrokeTransparency = 0
-	label.TextStrokeColor3 = Color3.new(0, 0, 0)
-	label.TextSize = 18
-	label.Font = Enum.Font.SourceSansBold
-	label.TextWrapped = true
-end
 
 -- ============================================================
 -- 御膳房（传菜打工）— 2D 横版布局
