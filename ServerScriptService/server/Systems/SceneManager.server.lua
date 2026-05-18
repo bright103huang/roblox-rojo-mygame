@@ -73,46 +73,6 @@ local function teleportToScene(player, sceneName)
 	hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 	DataManager:UpdateField(player, "CurrentScene", sceneName)
 
-	-- 首次进入炼丹洞天时触发新手引导
-	if sceneName == "Alchemy" then
-		local data = DataManager:GetData(player)
-		if data and not data.HasSeenAlchemyTutorial then
-			data.HasSeenAlchemyTutorial = true
-			local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
-			if taskEvent then
-				-- 随机从 4 条幽默提示中选一条
-				local tips = {
-					"来炼丹洞天啦！\n左边绿色草台→取药材\n右边柴火堆→取柴火\n丹炉→先放药材，再加3次柴",
-					"炼丹秘诀：\n① 绿台子薅草药\n② 药材扔炉子里\n③ 柴火堆搬柴，加3次火候",
-					"新来的？记好了！\n绿色=药材(左边)\n褐色=柴火(右边)\n先放药，再加3次柴，火候到了自然成丹",
-					"别嫌麻烦，炼丹就三步：\n1.草药台抓把草(绿色那个)\n2.药材丢炉里\n3.跑右边抱柴火，来回3趟",
-				}
-				taskEvent:FireClient(player, "AlchemyTutorial", {
-					Message = tips[math.random(1, #tips)],
-				})
-			end
-		end
-	end
-
-	-- 首次进入妖兽战场时触发新手引导
-	if sceneName == "Beast" then
-		local data = DataManager:GetData(player)
-		if data and not data.HasSeenBeastTutorial then
-			data.HasSeenBeastTutorial = true
-			local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
-			if taskEvent then
-				local tips = {
-					"妖兽角斗场生存指南！\n① 踏入战场中央→妖兽从右侧铁门冲出\n② 用方向键走向妖兽→碰撞冲击\n③ 三轮碰撞后定胜负\n④ 赢了得仙力经验+仙晶\n⑤ 输了...跑快点保命",
-					"角斗就三招：\n1. 站到场地中央 → 铁门开\n2. 往右走靠近妖兽 → 自动撞\n3. 连撞三次 → 结算\n仙力够强就赢，脸黑就挨打",
-					"别怕，角斗场机制：\n- 你强的时候80%能赢\n- 但总有20%概率碰到硬茬\n- 赢了赚经验仙晶\n- 输了扣体力\n修仙之路总有风险！",
-					"角斗秘诀：\n靠近→碰撞→再靠近→再碰撞→三次→出结果\n你仙力越高胜率越大\n碰到打不过的...下次再来！",
-				}
-				taskEvent:FireClient(player, "BeastTutorial", {
-					Message = tips[math.random(1, #tips)],
-				})
-			end
-		end
-	end
 
 	print("🚀 传送玩家 " .. player.Name .. " 到场景：" .. sceneName)
 	return true
