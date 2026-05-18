@@ -10,6 +10,7 @@ if not eventsFolder then
 		eventsFolder.Parent = ReplicatedStorage
 	else
 		eventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
+			assert(eventsFolder, "HomeEvents: Events folder failed to replicate after 10s")
 	end
 end
 
@@ -21,6 +22,7 @@ if not HomeEvent then
 		HomeEvent.Parent = eventsFolder
 	else
 		HomeEvent = eventsFolder:WaitForChild("HomeEvent", 10)
+			assert(HomeEvent, "HomeEvents: HomeEvent RemoteEvent failed to replicate after 10s")
 	end
 end
 
