@@ -1,231 +1,375 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
-local AnimationFactory = require(ReplicatedStorage.Shared.Modules.AnimationFactory)
-
 local SleepUI = {}
-local isActive = false
-local peaceTime = 0
-local totalTime = 0
-local pointerPos = 0.5
-local pointerVel = 0
-local peaceZoneCenter = 0.5
-local peaceZoneHalf = 0.2
-local isNightmare = false
-local nightmareTimer = 0
-local outOfBoundsTime = 0
-local nightmareCount = 0
-local elapsed = 0
-local duration = 20
-local currentTrack = nil
+local screenGui, mainFrame, rejectTime, isActive
+local backpackRenderFn = nil
 
-local screenGui, barFrame, pointer, peaceZone, timerLabel, statusLabel, hintLabel
-local runConn
+-- ============================================================
+-- 背包丹药选择面板
+-- ============================================================
+local function createBackpackPicker(onComplete)
+	local picker = Instance.new("Frame")
+	picker.Name = "PillPicker"
+	picker.Size = UDim2.new(1, 0, 1, 0)
+	picker.BackgroundTransparency = 0.4
+	picker.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	picker.Parent = screenGui
 
-function SleepUI:CreateUI()
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SleepUI"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = player:WaitForChild("PlayerGui")
+	local panel = Instance.new("Frame")
+	panel.Size = UDim2.new(0, 300, 0, 360)
+	panel.Position = UDim2.new(0.5, -150, 0.5, -180)
+	panel.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+	panel.BackgroundTransparency = 0.1
+	panel.BorderSizePixel = 0
+	panel.Parent = picker
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = panel
 
-    local backdrop = Instance.new("ImageLabel")
-    backdrop.Name = "Backdrop"
-    backdrop.Size = UDim2.new(1, 0, 1, 0)
-    backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
-    backdrop.BackgroundTransparency = 0.6
-    backdrop.Parent = screenGui
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 36)
+	title.Position = UDim2.new(0, 0, 0, 8)
+	title.BackgroundTransparency = 1
+	title.Text = "选择丹药服用"
+	title.TextColor3 = Color3.fromRGB(200, 230, 255)
+	title.TextSize = 18
+	title.Font = Enum.Font.SourceSansBold
+	title.Parent = panel
 
-    barFrame = Instance.new("Frame")
-    barFrame.Name = "BarFrame"
-    barFrame.Size = UDim2.new(0, 400, 0, 20)
-    barFrame.Position = UDim2.new(0.5, -200, 0.5, -10)
-    barFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-    barFrame.BackgroundTransparency = 0.3
-    barFrame.BorderSizePixel = 1
-    barFrame.Parent = screenGui
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(1, -10, 0, 250)
+	scroll.Position = UDim2.new(0, 5, 0, 48)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 4
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.Parent = panel
 
-    peaceZone = Instance.new("Frame")
-    peaceZone.Name = "PeaceZone"
-    peaceZone.Size = UDim2.new(0.4, 0, 1, 0)
-    peaceZone.Position = UDim2.new(0.3, 0, 0, 0)
-    peaceZone.BackgroundColor3 = Color3.fromRGB(50, 150, 80)
-    peaceZone.BackgroundTransparency = 0.3
-    peaceZone.BorderSizePixel = 0
-    peaceZone.Parent = barFrame
+	local selectedPills = {}
 
-    pointer = Instance.new("Frame")
-    pointer.Name = "Pointer"
-    pointer.Size = UDim2.new(0, 6, 0, 26)
-    pointer.Position = UDim2.new(0.5, -3, 0, -3)
-    pointer.BackgroundColor3 = Color3.fromRGB(255, 200, 100)
-    pointer.BackgroundTransparency = 0.1
-    pointer.BorderSizePixel = 0
-    pointer.Parent = screenGui
+	local function renderPills(backpack)
+		for _, c in ipairs(scroll:GetChildren()) do c:Destroy() end
+		local y = 0
+		local hasItems = false
+		for itemKey, count in pairs(backpack) do
+			if count > 0 then
+				hasItems = true
+				local row = Instance.new("Frame")
+				row.Size = UDim2.new(1, 0, 0, 36)
+				row.Position = UDim2.new(0, 0, 0, y)
+				row.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+				row.BackgroundTransparency = 0.2
+				row.BorderSizePixel = 0
+				row.Parent = scroll
+				local rcorner = Instance.new("UICorner")
+				rcorner.CornerRadius = UDim.new(0, 4)
+				rcorner.Parent = row
 
-    timerLabel = Instance.new("TextLabel")
-    timerLabel.Size = UDim2.new(0, 100, 0, 20)
-    timerLabel.Position = UDim2.new(0.5, -50, 0.5, 20)
-    timerLabel.BackgroundTransparency = 1
-    timerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    timerLabel.TextSize = 14
-    timerLabel.Parent = screenGui
+				local nameL = Instance.new("TextLabel")
+				nameL.Size = UDim2.new(0, 100, 0, 20)
+				nameL.Position = UDim2.new(0, 8, 0, 2)
+				nameL.BackgroundTransparency = 1
+				nameL.Text = itemKey
+				nameL.TextColor3 = Color3.fromRGB(200, 200, 200)
+				nameL.TextSize = 14
+				nameL.TextXAlignment = Enum.TextXAlignment.Left
+				nameL.Parent = row
 
-    statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(0, 200, 0, 24)
-    statusLabel.Position = UDim2.new(0.5, -100, 0.5, 45)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
-    statusLabel.TextSize = 18
-    statusLabel.Parent = screenGui
+				local countL = Instance.new("TextLabel")
+				countL.Size = UDim2.new(0, 40, 0, 20)
+				countL.Position = UDim2.new(0, 110, 0, 2)
+				countL.BackgroundTransparency = 1
+				countL.Text = "x" .. tostring(count)
+				countL.TextColor3 = Color3.fromRGB(150, 150, 150)
+				countL.TextSize = 12
+				countL.TextXAlignment = Enum.TextXAlignment.Left
+				countL.Parent = row
 
-    hintLabel = Instance.new("TextLabel")
-    hintLabel.Size = UDim2.new(0, 200, 0, 20)
-    hintLabel.Position = UDim2.new(0.5, -100, 0.5, -40)
-    hintLabel.BackgroundTransparency = 1
-    hintLabel.Text = "Click to balance"
-    hintLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    hintLabel.TextSize = 12
-    hintLabel.Parent = screenGui
+				local useBtn = Instance.new("TextButton")
+				useBtn.Size = UDim2.new(0, 50, 0, 24)
+				useBtn.Position = UDim2.new(0, 160, 0, 6)
+				useBtn.Text = "服用"
+				useBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 180)
+				useBtn.TextColor3 = Color3.new(1, 1, 1)
+				useBtn.TextSize = 12
+				useBtn.Font = Enum.Font.SourceSansBold
+				useBtn.BorderSizePixel = 0
+				useBtn.Parent = row
+				local btnCorner = Instance.new("UICorner")
+				btnCorner.CornerRadius = UDim.new(0, 4)
+				btnCorner.Parent = useBtn
 
-    SleepUI:Hide()
+				local takenL = Instance.new("TextLabel")
+				takenL.Size = UDim2.new(0, 60, 0, 20)
+				takenL.Position = UDim2.new(0, 220, 0, 2)
+				takenL.BackgroundTransparency = 1
+				takenL.Text = ""
+				takenL.TextColor3 = Color3.fromRGB(150, 255, 150)
+				takenL.TextSize = 12
+				takenL.TextXAlignment = Enum.TextXAlignment.Left
+				takenL.Parent = row
+
+				local remaining = count
+				useBtn.MouseButton1Click:Connect(function()
+					table.insert(selectedPills, itemKey)
+					remaining = remaining - 1
+					countL.Text = "x" .. tostring(math.max(0, remaining))
+					if remaining <= 0 then
+						useBtn.Text = "已空"
+						useBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+						useBtn.Active = false
+					end
+					local taken = 0
+					for _, v in ipairs(selectedPills) do
+						if v == itemKey then taken = taken + 1 end
+					end
+					takenL.Text = "已服" .. tostring(taken)
+				end)
+				y = y + 40
+			end
+		end
+		if not hasItems then
+			local emptyL = Instance.new("TextLabel")
+			emptyL.Size = UDim2.new(1, 0, 0, 30)
+			emptyL.Position = UDim2.new(0, 0, 0, 10)
+			emptyL.BackgroundTransparency = 1
+			emptyL.Text = "背包中没有丹药"
+			emptyL.TextColor3 = Color3.fromRGB(150, 150, 150)
+			emptyL.TextSize = 14
+			emptyL.Parent = scroll
+		end
+		scroll.CanvasSize = UDim2.new(0, 0, 0, y + 10)
+	end
+
+	backpackRenderFn = renderPills
+
+	local confirmBtn = Instance.new("TextButton")
+	confirmBtn.Size = UDim2.new(0, 200, 0, 32)
+	confirmBtn.Position = UDim2.new(0.5, -100, 1, -40)
+	confirmBtn.Text = "结束服药，去睡觉"
+	confirmBtn.BackgroundColor3 = Color3.fromRGB(60, 140, 60)
+	confirmBtn.TextColor3 = Color3.new(1, 1, 1)
+	confirmBtn.TextSize = 14
+	confirmBtn.Font = Enum.Font.SourceSansBold
+	confirmBtn.Parent = panel
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(0, 6)
+	cCorner.Parent = confirmBtn
+	confirmBtn.MouseButton1Click:Connect(function()
+		picker:Destroy()
+		onComplete(selectedPills)
+	end)
+
+	-- 请求背包数据
+	HomeEvent:FireServer("GetBackpack")
 end
 
-function SleepUI:Start()
-    screenGui.Enabled = true
-    isActive = true
-    peaceTime = 0
-    totalTime = 0
-    pointerPos = 0.5
-    pointerVel = 0
-    elapsed = 0
-    nightmareTimer = 0
-    outOfBoundsTime = 0
-    nightmareCount = 0
-
-    local char = player.Character
-    if char then
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            local laySeq = AnimationFactory:CreateLaySequence()
-            currentTrack = AnimationFactory:PlayAnimation(humanoid, laySeq)
-            humanoid.WalkSpeed = 0
-            humanoid.AutoRotate = false
-        end
-    end
-
-    runConn = RunService.Heartbeat:Connect(function(dt)
-        SleepUI:Update(dt)
-    end)
-end
-
-function SleepUI:Update(dt)
-    if not isActive then return end
-    elapsed = elapsed + dt
-    totalTime = totalTime + dt
-
-    -- Pointer physics: click pushes right, natural drift left
-    pointerVel = pointerVel - 0.3 * dt
-    pointerVel = pointerVel * 0.98
-    pointerPos = pointerPos + pointerVel * dt
-    pointerPos = math.clamp(pointerPos, 0.05, 0.95)
-
-    -- Check peace zone
-    local inZone = math.abs(pointerPos - peaceZoneCenter) < peaceZoneHalf
-    if inZone then
-        peaceTime = peaceTime + dt
-        outOfBoundsTime = 0
-        statusLabel.Text = "安宁"
-        statusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
-    else
-        outOfBoundsTime = outOfBoundsTime + dt
-        statusLabel.Text = "不宁"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 150, 100)
-    end
-
-    -- Nightmare check
-    nightmareTimer = nightmareTimer + dt
-    local malice = player:GetAttribute("Malice") or 0
-    if nightmareTimer > 10 and malice > 0 then
-        if math.random() < 0.3 then
-            isNightmare = true
-            nightmareCount = nightmareCount + 1
-            pointerVel = pointerVel + (math.random() > 0.5 and 0.8 or -0.8)
-            peaceZoneHalf = 0.1
-            statusLabel.Text = "梦魇!"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            task.delay(3, function()
-                peaceZoneHalf = 0.2
-                isNightmare = false
-            end)
-        end
-        nightmareTimer = 0
-    end
-
-    -- Check insomnia from long OOB
-    if outOfBoundsTime > 3 then
-        SleepUI:Complete()
-        return
-    end
-
-    barFrame.Parent = screenGui
-    pointer.Position = UDim2.new(pointerPos, -3, 0.5, -13)
-    timerLabel.Text = string.format("%.1f / %ds", elapsed, duration)
-
-    if elapsed >= duration then
-        SleepUI:Complete()
-    end
-end
-
-function SleepUI:Complete()
-    if runConn then runConn:Disconnect() end
-    isActive = false
-    peaceZoneHalf = 0.2
-
-    local ratio = totalTime > 0 and peaceTime / totalTime or 0
-    HomeEvent:FireServer("SleepComplete", {
-        PeaceRatio = ratio,
-        NightmaresTriggered = nightmareCount,
-    })
-
-    if currentTrack then currentTrack:Stop(); currentTrack = nil end
-    local char = player.Character
-    if char then
-        local h = char:FindFirstChild("Humanoid")
-        if h then h.AutoRotate = true; h.WalkSpeed = 16 end
-    end
-    SleepUI:Hide()
-end
-
-function SleepUI:Hide()
-    isActive = false
-    if screenGui then screenGui.Enabled = false end
-    if runConn then runConn:Disconnect() end
-end
-
--- Click to push pointer right
-UserInputService.InputBegan:Connect(function(input, gp)
-    if not isActive or gp then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        pointerVel = pointerVel + 0.4
-    end
-end)
--- 切换场景时自动退出睡觉
-player:GetAttributeChangedSignal("CurrentScene"):Connect(function()
-    if isActive then SleepUI:Complete() end
-end)
-
+-- ============================================================
+-- 事件监听
+-- ============================================================
 HomeEvent.OnClientEvent:Connect(function(action, data)
-    if action == "StartSleep" then
-        SleepUI:Start()
-    elseif action == "SleepSettlement" then
-        -- Show settlement results briefly
-        statusLabel.Text = data.Message or ""
-        task.delay(3, function() SleepUI:Hide() end)
-    end
+	if action == "StartSleep" then
+		if rejectTime and tick() - rejectTime < 5 then return end
+		SleepUI:ShowSleepDialog()
+	elseif action == "BackpackData" then
+		if backpackRenderFn then
+			backpackRenderFn(data.Backpack or {})
+		end
+	elseif action == "SleepSettlement" then
+		SleepUI:ShowSettlement(data.Message or "睡眠结束")
+	end
+end)
+
+-- ============================================================
+-- UI 创建
+-- ============================================================
+function SleepUI:CreateUI()
+	screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "SleepUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.DisplayOrder = 100
+	screenGui.Parent = player:WaitForChild("PlayerGui")
+	SleepUI:Hide()
+end
+
+-- ============================================================
+-- 显示三选项弹窗
+-- ============================================================
+function SleepUI:ShowSleepDialog()
+	if not screenGui then SleepUI:CreateUI() end
+	screenGui.Enabled = true
+
+	local backdrop = Instance.new("ImageLabel")
+	backdrop.Name = "SleepBackdrop"
+	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
+	backdrop.BackgroundTransparency = 0.5
+	backdrop.Parent = screenGui
+
+	mainFrame = Instance.new("Frame")
+	mainFrame.Name = "SleepDialog"
+	mainFrame.Size = UDim2.new(0, 300, 0, 200)
+	mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+	mainFrame.BackgroundTransparency = 0.1
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Parent = screenGui
+	local mCorner = Instance.new("UICorner")
+	mCorner.CornerRadius = UDim.new(0, 8)
+	mCorner.Parent = mainFrame
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.Position = UDim2.new(0, 0, 0, 12)
+	title.BackgroundTransparency = 1
+	title.Text = "睡 觉"
+	title.TextColor3 = Color3.fromRGB(200, 230, 255)
+	title.TextSize = 24
+	title.Font = Enum.Font.SourceSansBold
+	title.Parent = mainFrame
+
+	local desc = Instance.new("TextLabel")
+	desc.Size = UDim2.new(1, -20, 0, 24)
+	desc.Position = UDim2.new(0, 10, 0, 52)
+	desc.BackgroundTransparency = 1
+	desc.Text = "选择一种方式入睡"
+	desc.TextColor3 = Color3.fromRGB(160, 180, 200)
+	desc.TextSize = 14
+	desc.Parent = mainFrame
+
+	local sleepBtn = Instance.new("TextButton")
+	sleepBtn.Size = UDim2.new(0, 260, 0, 36)
+	sleepBtn.Position = UDim2.new(0.5, -130, 0, 80)
+	sleepBtn.Text = "直接睡觉"
+	sleepBtn.BackgroundColor3 = Color3.fromRGB(60, 80, 120)
+	sleepBtn.TextColor3 = Color3.new(1, 1, 1)
+	sleepBtn.TextSize = 16
+	sleepBtn.Font = Enum.Font.SourceSansBold
+	sleepBtn.BorderSizePixel = 0
+	sleepBtn.Parent = mainFrame
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 6)
+	sCorner.Parent = sleepBtn
+	sleepBtn.MouseButton1Click:Connect(function()
+		mainFrame:Destroy()
+		if backdrop then backdrop:Destroy() end
+		SleepUI:SleepFade(function()
+			HomeEvent:FireServer("SleepComplete", { Pills = {} })
+		end)
+	end)
+
+	local pillSleepBtn = Instance.new("TextButton")
+	pillSleepBtn.Size = UDim2.new(0, 260, 0, 36)
+	pillSleepBtn.Position = UDim2.new(0.5, -130, 0, 124)
+	pillSleepBtn.Text = "服用丹药后睡觉"
+	pillSleepBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+	pillSleepBtn.TextColor3 = Color3.new(1, 1, 1)
+	pillSleepBtn.TextSize = 16
+	pillSleepBtn.Font = Enum.Font.SourceSansBold
+	pillSleepBtn.BorderSizePixel = 0
+	pillSleepBtn.Parent = mainFrame
+	local psCorner = Instance.new("UICorner")
+	psCorner.CornerRadius = UDim.new(0, 6)
+	psCorner.Parent = pillSleepBtn
+	pillSleepBtn.MouseButton1Click:Connect(function()
+		mainFrame:Destroy()
+		if backdrop then backdrop:Destroy() end
+		createBackpackPicker(function(selectedPills)
+			SleepUI:SleepFade(function()
+				HomeEvent:FireServer("SleepComplete", { Pills = selectedPills or {} })
+			end)
+		end)
+	end)
+
+	local cancelBtn = Instance.new("TextButton")
+	cancelBtn.Size = UDim2.new(0, 100, 0, 28)
+	cancelBtn.Position = UDim2.new(0.5, -50, 1, -36)
+	cancelBtn.Text = "取消"
+	cancelBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+	cancelBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+	cancelBtn.TextSize = 14
+	cancelBtn.Parent = mainFrame
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(0, 6)
+	cCorner.Parent = cancelBtn
+	cancelBtn.MouseButton1Click:Connect(function()
+		rejectTime = tick()
+		SleepUI:Hide()
+	end)
+end
+
+-- ============================================================
+-- 睡眠渐黑效果
+-- ============================================================
+function SleepUI:SleepFade(onComplete)
+	if not screenGui then SleepUI:CreateUI() end
+	screenGui.Enabled = true
+
+	local fade = Instance.new("ImageLabel")
+	fade.Size = UDim2.new(1, 0, 1, 0)
+	fade.BackgroundColor3 = Color3.new(0, 0, 0)
+	fade.BackgroundTransparency = 1
+	fade.Parent = screenGui
+
+	TweenService:Create(fade, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ BackgroundTransparency = 0 }):Play()
+	task.wait(2)
+	if onComplete then onComplete() end
+end
+
+-- ============================================================
+-- 结算显示
+-- ============================================================
+function SleepUI:ShowSettlement(message)
+	for _, c in ipairs(screenGui:GetChildren()) do
+		c:Destroy()
+	end
+
+	local fade = Instance.new("ImageLabel")
+	fade.Size = UDim2.new(1, 0, 1, 0)
+	fade.BackgroundColor3 = Color3.new(0, 0, 0)
+	fade.BackgroundTransparency = 0
+	fade.Parent = screenGui
+
+	local settleLabel = Instance.new("TextLabel")
+	settleLabel.Size = UDim2.new(0, 400, 0, 60)
+	settleLabel.Position = UDim2.new(0.5, -200, 0.5, -30)
+	settleLabel.BackgroundTransparency = 1
+	settleLabel.Text = message or "睡眠结束"
+	settleLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+	settleLabel.TextSize = 22
+	settleLabel.Font = Enum.Font.SourceSansBold
+	settleLabel.Parent = screenGui
+
+	task.wait(3)
+	isActive = false
+	SleepUI:Hide()
+end
+
+-- ============================================================
+-- 隐藏
+-- ============================================================
+function SleepUI:Hide()
+	if screenGui then screenGui.Enabled = false end
+	if screenGui then
+		for _, c in ipairs(screenGui:GetChildren()) do
+			c:Destroy()
+		end
+	end
+	mainFrame = nil
+end
+
+-- ============================================================
+-- 场景切换自动退出
+-- ============================================================
+player:GetAttributeChangedSignal("CurrentScene"):Connect(function()
+	if screenGui and screenGui.Enabled then
+		SleepUI:Hide()
+	end
 end)
 
 SleepUI:CreateUI()
