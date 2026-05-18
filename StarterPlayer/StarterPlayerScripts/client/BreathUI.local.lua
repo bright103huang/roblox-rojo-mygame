@@ -129,7 +129,6 @@ function BreathUI:CreateUI()
 		btnCorner.Parent = btn
 		btn.MouseButton1Click:Connect(onClick)
 	end
-	local rejectTime = 0
 	makeConfirmBtn("取消", 30, Color3.fromRGB(80, 80, 100), function()
 		confirmFrame.Visible = false
 		screenGui.Enabled = false
