@@ -143,6 +143,13 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 		return
 	end
 
+	-- 场景指南
+	if result == "ShowSceneGuide" then
+		local SceneGuideUI = require(ReplicatedStorage.Shared.UI.SceneGuideUI)
+		SceneGuideUI.Show(extraData and extraData.SceneName)
+		return
+	end
+
 	-- 妖兽角斗场战斗事件
 	if result == "BeastFightStart" then
 		TaskNotice:Notify({

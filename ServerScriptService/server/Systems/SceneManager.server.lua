@@ -88,6 +88,8 @@ sceneTeleportEvent.OnServerEvent:Connect(function(player, sceneName)
 	local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
 	if taskEvent then
 		taskEvent:FireClient(player, "SceneSwitched:" .. sceneName)
+		-- 触发场景指南弹窗
+		taskEvent:FireClient(player, "ShowSceneGuide", { SceneName = sceneName })
 	end
 end)
 
@@ -127,6 +129,11 @@ local function onPlayerAdded(player)
 
 		-- 应用动态速度
 		SpeedCalculator.Apply(player)
+		-- 触发场景指南
+		local taskEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("TaskEvent")
+		if taskEvent then
+			taskEvent:FireClient(player, "ShowSceneGuide", { SceneName = scene })
+		end
 		print("👣 玩家 " .. player.Name .. " 重生在场景：" .. scene)
 	end)
 end
