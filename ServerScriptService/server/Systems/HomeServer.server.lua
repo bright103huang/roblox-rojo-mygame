@@ -5,7 +5,6 @@ local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
 local DataManager = require(script.Parent.DataManager)
 local StatusService = require(script.Parent.StatusService)
 local StatsConfig = require(ReplicatedStorage.Shared.Config.StatsConfig)
-local SleepLogic = require(ReplicatedStorage.Shared.PureLogic.SleepLogic)
 local TimeService = require(script.Parent.TimeService)
 local HomeEntryTracker = require(ReplicatedStorage.Shared.Modules.HomeEntryTracker)
 local ShopService = require(script.Parent.ShopService)
@@ -42,6 +41,12 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 		local hasPills = data.Pills and #data.Pills > 0
 		local mult = hasPills and StatsConfig.SLEEP.PillMultiplier or 1
 
+		-- Save old values for delta calculation
+		local oldStamina = plrData.Stamina
+		local oldSpirit = plrData.Spirit
+		local oldFatigue = plrData.Fatigue
+		local oldMalice = plrData.Malice
+
 		-- Apply pill effects first (2x each)
 		if hasPills then
 			for _, pillKey in ipairs(data.Pills or {}) do
@@ -68,8 +73,8 @@ HomeEvent.OnServerEvent:Connect(function(player, action, data)
 		HomeEntryTracker.MarkUsed(player, "Slept")
 
 		local msg = string.format("睡眠充足！体力+%d 精神+%d 疲劳-%d 戾气-%d",
-			stamina - (data.Stamina or 0), spirit - (data.Spirit or 0),
-			(data.Fatigue or 0) - fatigue, (data.Malice or 0) - malice)
+			stamina - oldStamina, spirit - oldSpirit,
+			oldFatigue - fatigue, oldMalice - malice)
 		HomeEvent:FireClient(player, "SleepSettlement", { Message = msg })
 
 	elseif action == "PrayerChoice" then
