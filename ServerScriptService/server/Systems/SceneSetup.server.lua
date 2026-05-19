@@ -883,6 +883,13 @@ local function setupGoldenHallScene()
 		end
 	end
 
+	-- 前层柱子（z=4）
+	for x = -18, 18, 12 do
+		if math.abs(x) > 2 then
+			createPillar(origin + Vector3.new(x, 3, 4), 6, BrickColor.new("Gold"))
+		end
+	end
+
 	-- ============================================================
 	-- 前层（z=4）：金色粒子效果
 	-- ============================================================
