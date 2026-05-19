@@ -28,7 +28,8 @@ local MAX_CRAFT_ATTEMPTS = 5
 local carrying = {}     -- [userId] = "herb" | "firewood" | nil
 local hasHerb = {}      -- [userId] = bool  药材是否已入炉
 local alchemyStep = {}  -- [userId] = 0~3  添柴进度
-local craftCount = {}   -- [userId] = number
+local craftCount = {}
+local isCrafting = {}   -- [userId] = number
 
 -- ============================================================
 -- 获取 TaskEvent RemoteEvent
@@ -49,9 +50,10 @@ function AlchemyTask.OnPlayerPickup(player, contextData)
 	local partName = contextData and contextData.PartName or ""
 
 	if partName == "HerbStation" then
-		carrying[player.UserId] = "herb"
-		StatusService:ApplyCosts(player, COSTS.PickHerb)
-		return true
+			if isCrafting[player.UserId] then return false end
+			carrying[player.UserId] = "herb"
+			StatusService:ApplyCosts(player, COSTS.PickHerb)
+			return true
 
 	elseif partName == "Woodpile" then
 		-- 必须先放药材入炉才能取柴
@@ -77,6 +79,7 @@ function AlchemyTask.OnPlayerDrop(player, _area)
 	if carrying[userId] == "herb" then
 		-- 第一次：药材入炉，记录状态
 		hasHerb[userId] = true
+		isCrafting[userId] = true
 		alchemyStep[userId] = 0
 		craftCount[userId] = nil
 		carrying[userId] = nil
@@ -171,6 +174,7 @@ function AlchemyTask.OnPlayerDrop(player, _area)
 		end
 		alchemyStep[userId] = nil
 		hasHerb[userId] = nil
+		isCrafting[userId] = nil
 		player:SetAttribute("AlchemyStep", nil)
 		return false, "CraftDone"
 	end
@@ -214,6 +218,7 @@ function AlchemyTask.OnPlayerDrop(player, _area)
 
 	alchemyStep[userId] = nil
 	hasHerb[userId] = nil
+	isCrafting[userId] = nil
 	player:SetAttribute("AlchemyStep", nil)
 	return false, "CraftDone"
 end
@@ -225,6 +230,7 @@ Players.PlayerRemoving:Connect(function(player)
 	hasHerb[userId] = nil
 	alchemyStep[userId] = nil
 	craftCount[userId] = nil
+	isCrafting[userId] = nil
 end)
 
 return AlchemyTask

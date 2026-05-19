@@ -44,7 +44,7 @@ function SpeedCalculator.Calculate(player)
 	local agilityBonus = agility * Config.Stats.AGILITY_SPEED_PER_LEVEL
 	local modifier = getStatusModifier(data)
 
-	return (baseSpeed + agilityBonus) * modifier
+	return math.min(64, (baseSpeed + agilityBonus) * modifier)
 end
 
 -- 应用到 Humanoid
