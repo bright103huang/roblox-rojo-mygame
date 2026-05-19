@@ -165,7 +165,7 @@ end
 -- 文字信息行
 local INFO_Y1 = 72   -- 等级 + 场景
 local INFO_Y2 = 92   -- 警告 + 风险等级
-local INFO_Y3 = 110  -- 考编 / 天兵
+local INFO_Y3 = 110  -- 晋升条件 / 天兵
 
 -- 场景名映射
 local SCENE_NAMES = {
@@ -225,7 +225,7 @@ riskLevelLabel.Font = Enum.Font.SourceSansBold
 riskLevelLabel.TextXAlignment = Enum.TextXAlignment.Right
 riskLevelLabel.Parent = frame
 
--- 考编指数行
+-- 晋升条件行
 local examText = Instance.new("TextLabel")
 examText.Size = UDim2.new(0.6, -6, 0, 18)
 examText.Position = UDim2.new(0, 6, 0, INFO_Y3)
@@ -350,7 +350,7 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 
-	-- 考编指数计算
+	-- 晋升条件显示
 	local aLv = player:GetAttribute("Agility") or 1
 	local alLv = player:GetAttribute("AlchemyLv") or 1
 	local cLv = player:GetAttribute("Combat") or 1
@@ -360,27 +360,20 @@ RunService.RenderStepped:Connect(function()
 		local gd = ls:FindFirstChild("功德")
 		if gd then gdVal = gd.Value end
 	end
-	local examIndex = math.floor(aLv * 3 + alLv * 3 + cLv * 3 + gdVal / 10)
-	local passThreshold = 60
 	local minStats = 6
 
 	if player:GetAttribute("IsRecruited") == true then
-		examText.Text = "天兵在编 考编指数 " .. examIndex
-		examText.TextColor3 = Color3.fromRGB(100, 200, 255)
+		examText.Text = "已晋升天兵 ✓"
+		examText.TextColor3 = Color3.fromRGB(80, 255, 80)
 	else
-		local needs = {}
-		if aLv < minStats then table.insert(needs, "身法" .. aLv .. "->" .. minStats) end
-		if alLv < minStats then table.insert(needs, "火候" .. alLv .. "->" .. minStats) end
-		if cLv < minStats then table.insert(needs, "仙力" .. cLv .. "->" .. minStats) end
-		if gdVal < 100 then table.insert(needs, "功德" .. math.floor(gdVal) .. "->100") end
-
-		if #needs > 0 then
-			examText.Text = "考编 " .. examIndex .. "/" .. passThreshold .. " 缺：" .. table.concat(needs, " ")
-			examText.TextColor3 = COLORS.Gold
-		else
-			examText.Text = "考编 " .. examIndex .. "/" .. passThreshold .. " 可考核！"
-			examText.TextColor3 = Color3.fromRGB(80, 255, 80)
-		end
+		local items = {
+			"身法" .. aLv .. "/" .. minStats,
+			"火候" .. alLv .. "/" .. minStats,
+			"仙力" .. cLv .. "/" .. minStats,
+			"功德" .. math.floor(gdVal) .. "/100",
+		}
+		examText.Text = "晋升条件 " .. table.concat(items, " ")
+		examText.TextColor3 = COLORS.Gold
 	end
 
 	-- 天兵信息
