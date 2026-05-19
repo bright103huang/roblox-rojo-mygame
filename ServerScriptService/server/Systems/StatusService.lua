@@ -217,6 +217,10 @@ function StatusService:ApplyCosts(player, costsTable)
 		end
 	end
 
+	-- 检测晋升条件
+	local MeritService = require(script.Parent.MeritService)
+	MeritService.CheckAutoPromotion(player)
+
 	-- 红线检测
 	self:CheckRedLines(player)
 
@@ -349,6 +353,10 @@ function StatusService:AddExp(player, attrField, amount)
 				StatusService.OnLevelUp(player, attrField, data[attrField])
 			end)
 		end
+
+			-- 检测晋升条件
+			local MeritService = require(script.Parent.MeritService)
+			MeritService.CheckAutoPromotion(player)
 	else
 		-- 只更新经验（不更新 level），无需同步客户端
 		-- 但需要存回 cache（已经 set 了）
