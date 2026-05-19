@@ -33,7 +33,7 @@ local ANIMAL_SHAPES = {
 	Wolf = {
 		Name = "狼妖",
 		Color = BrickColor.new("Cool grey"),
-		Scale = 1,
+		Scale = 3,
 		Parts = {
 			{ Name = "Body", Size = Vector3.new(2.4, 1, 1.4),  Offset = Vector3.new(0, 1.2, 0) },
 			{ Name = "Head", Size = Vector3.new(1, 0.8, 1.2), Offset = Vector3.new(1.6, 1.4, 0) },
@@ -49,7 +49,7 @@ local ANIMAL_SHAPES = {
 	Tiger = {
 		Name = "虎妖",
 		Color = BrickColor.new("Bright orange"),
-		Scale = 1.1,
+		Scale = 3,
 		Parts = {
 			{ Name = "Body", Size = Vector3.new(2.8, 1.2, 1.6),  Offset = Vector3.new(0, 1.4, 0) },
 			{ Name = "Head", Size = Vector3.new(1.2, 1, 1.3), Offset = Vector3.new(1.8, 1.6, 0) },
@@ -67,7 +67,7 @@ local ANIMAL_SHAPES = {
 	Snake = {
 		Name = "蛇妖",
 		Color = BrickColor.new("Bright violet"),
-		Scale = 1,
+		Scale = 3,
 		Parts = {
 			{ Name = "Body1", Size = Vector3.new(0.8, 0.8, 0.8), Offset = Vector3.new(0, 1.2, 0), Ball = true },
 			{ Name = "Body2", Size = Vector3.new(0.7, 0.7, 0.7), Offset = Vector3.new(-0.7, 1, 0), Ball = true },
@@ -80,7 +80,7 @@ local ANIMAL_SHAPES = {
 	Dragon = {
 		Name = "龙妖",
 		Color = BrickColor.new("Really red"),
-		Scale = 1.3,
+		Scale = 4,
 		Parts = {
 			{ Name = "Body", Size = Vector3.new(3.2, 1.5, 2), Offset = Vector3.new(0, 1.6, 0) },
 			{ Name = "Head", Size = Vector3.new(1.5, 1.2, 1.5), Offset = Vector3.new(2.2, 1.8, 0) },

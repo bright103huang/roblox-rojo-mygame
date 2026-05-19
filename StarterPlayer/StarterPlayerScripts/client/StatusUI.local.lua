@@ -84,7 +84,7 @@ title.Parent = frame
 local BAR_CONFIGS = {
 	{ Key = "Stamina", Label = "体力", Color = COLORS.Stamina, DangerThreshold = nil },
 	{ Key = "Spirit", Label = "精神", Color = COLORS.Spirit, DangerThreshold = nil },
-	{ Key = "Fatigue", Label = "疲劳", Color = COLORS.Fatigue, DangerColor = COLORS.FatigueDanger, DangerThreshold = 80, Invert = true },
+	{ Key = "Fatigue", Label = "疲劳", Color = COLORS.Fatigue, DangerColor = COLORS.FatigueDanger, DangerThreshold = 80 },
 	{ Key = "FirePoison", Label = "火毒", Color = COLORS.FirePoison, DangerColor = COLORS.FirePoisonDanger, DangerThreshold = 60 },
 	{ Key = "Malice", Label = "戾气", Color = COLORS.Malice, DangerColor = COLORS.MaliceDanger, DangerThreshold = 50 },
 	{ Key = "Risk", Label = "妖气", Color = Color3.fromRGB(80, 200, 80),

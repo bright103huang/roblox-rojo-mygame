@@ -144,7 +144,7 @@ local TaskConfig = {
 		ActiveTasks = nil, -- nil 表示全部启用，或 {"Deliver"}
 
 		-- 交互防抖时间（秒）
-		DebounceTime = 0.3,
+		DebounceTime = 0.1,
 	},
 }
 
