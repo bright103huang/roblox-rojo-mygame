@@ -8,6 +8,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local DataManager = require(script.Parent.DataManager)
+local DataStoreService = game:GetService("DataStoreService")
+local Config = require(ReplicatedStorage.Shared.Config)
+local ExamConfig = Config.Exam
+
+local rankingStore = DataStoreService:GetDataStore("TianbingRankings")
 
 -- ============================================================
 -- 配置
@@ -135,6 +140,122 @@ function MeritService.GetNextRankInfo(player)
 	end
 
 	return nil, nil  -- 已满级
+end
+
+-- ============================================================
+-- 自动晋升检测 + DataStore 排名
+-- ============================================================
+
+-- 自动检测晋升条件（在 StatusService.AddExp / ApplyCosts 中调用）
+function MeritService.CheckAutoPromotion(player)
+	local data = DataManager:GetData(player)
+	if not data then return false end
+	if data.IsRecruited then return false end  -- 已晋升，跳过
+
+	-- 检查四项门槛（引用 ExamConfig）
+	if (data.Agility or 1) < ExamConfig.MinAgility then return false end
+	if (data.AlchemyLv or 1) < ExamConfig.MinAlchemy then return false end
+	if (data.Combat or 1) < ExamConfig.MinCombat then return false end
+	if (data.GongDe or 0) < ExamConfig.MinGongDe then return false end
+
+	-- 全部达标，执行晋升
+	MeritService.PromoteToTianBing(player)
+	return true
+end
+
+-- 晋升天兵
+function MeritService.PromoteToTianBing(player)
+	local data = DataManager:GetData(player)
+	if not data then return end
+
+	-- 1. 设置晋升状态
+	data.IsRecruited = true
+	data.MilitaryRank = "天兵"
+	DataManager:UpdateField(player, "IsRecruited", true)
+	DataManager:UpdateField(player, "MilitaryRank", "天兵")
+	player:SetAttribute("IsRecruited", true)
+
+	-- 2. 记录完成天数
+	local finishDay = data.TotalDays or 0
+
+	-- 3. 写入 DataStore 排名
+	local success, err = pcall(function()
+		rankingStore:UpdateAsync(tostring(player.UserId), function(oldData)
+			local entry = oldData or {}
+			entry.UserId = player.UserId
+			entry.Name = player.Name
+			entry.Days = finishDay
+			return entry
+		end)
+	end)
+	if not success then
+		warn("TianbingRankings DataStore write failed for " .. player.Name .. ": " .. tostring(err))
+	end
+
+	-- 4. 获取排名
+	local rank = MeritService.GetPlayerRank(tostring(player.UserId))
+
+	-- 5. 获取排行榜前10
+	local rankings = MeritService.GetRankings()
+
+	-- 6. 传送至金色大厅
+	local SceneManager = require(script.Parent.SceneManager)
+	SceneManager.TeleportToScene(player, "GoldenHall")
+
+	-- 7. 通知客户端播放晋升仪式
+	local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+	if eventsFolder then
+		local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
+		if taskEvent then
+			taskEvent:FireClient(player, "PromotionCeremony", {
+				Days = finishDay,
+				Rank = rank or 999,
+				Rankings = rankings,
+			})
+		end
+	end
+
+	print("🎉 " .. player.Name .. " 晋升为【天兵】！用时 " .. finishDay .. " 天")
+end
+
+-- 获取指定玩家的排名
+function MeritService.GetPlayerRank(userIdStr)
+	local success, pages = pcall(function()
+		return rankingStore:GetSortedAsync("Ascending", 10)
+	end)
+	if not success then return nil end
+
+	local rank = 1
+	while true do
+		local entry = pages:GetCurrentPage()
+		if not entry or #entry == 0 then break end
+		for _, item in ipairs(entry) do
+			if item.key == userIdStr then
+				return rank
+			end
+			rank = rank + 1
+		end
+		if pages.IsFinished then break end
+		pages:AdvanceAsync()
+	end
+	return nil
+end
+
+-- 获取排行榜前十
+function MeritService.GetRankings()
+	local success, pages = pcall(function()
+		return rankingStore:GetSortedAsync("Ascending", 10)
+	end)
+	if not success then return {} end
+
+	local rankings = {}
+	local page = pages:GetCurrentPage()
+	if page then
+		for _, item in ipairs(page) do
+			table.insert(rankings, item.value)
+		end
+	end
+	return rankings
 end
 
 print("  MeritService（功勋系统）已启动")
