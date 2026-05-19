@@ -192,25 +192,23 @@ function MeritService.PromoteToTianBing(player)
 		warn("TianbingRankings DataStore write failed for " .. player.Name .. ": " .. tostring(err))
 	end
 
-		-- 4. 获取排行榜前10
-		local rankings = MeritService.GetRankings()
+	-- 4. 获取排行榜前10
+	-- 注意：DataStore 最终一致性，刚写入的记录可能不立即出现在结果中，
+	-- 因此排名 = #rankings + 1 是估算值，下一轮读取会修正
+	local rankings = MeritService.GetRankings()
 
-		-- 5. 计算玩家排名（从前10列表中匹配）
-		local rank = nil
-		for i, entry in ipairs(rankings) do
+	-- 5. 计算玩家排名（从前10列表中匹配）
+	local rank = nil
+	for i, entry in ipairs(rankings) do
 		if entry.UserId == player.UserId then
 			rank = i
 			break
 		end
-		end
+	end
 
-		-- 6. 传送至金色大厅
-		local SceneManager = require(script.Parent.SceneManager)
-		SceneManager.TeleportToScene(player, "GoldenHall")
-
-		-- 7. 通知客户端播放晋升仪式
-		local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
-		if eventsFolder then
+	-- 6. 通知客户端播放晋升仪式（先发事件，再传送，防止角色重置导致丢事件）
+	local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+	if eventsFolder then
 		local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
 		if taskEvent then
 			taskEvent:FireClient(player, "PromotionCeremony", {
@@ -219,7 +217,14 @@ function MeritService.PromoteToTianBing(player)
 				Rankings = rankings,
 			})
 		end
-		end
+	end
+
+	-- 7. 传送至金色大厅
+	local SceneManager = require(script.Parent.SceneManager)
+	SceneManager.TeleportToScene(player, "GoldenHall")
+
+	-- 立即落盘，防止服务器崩溃导致晋升数据丢失
+	DataManager:Save(player)
 end
 
 function MeritService.GetRankings()

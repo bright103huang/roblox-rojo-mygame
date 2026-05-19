@@ -327,8 +327,5 @@ end
 			startCeremony(data)
 		end
 	end)
-		startCeremony(data)
-	end
-end)
 
 print("PromotionUI 已加载")
