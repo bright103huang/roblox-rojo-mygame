@@ -944,6 +944,7 @@ local function setupGoldenHallScene()
 	mistEmitter.Size = NumberSequence.new(1, 3)
 	mistEmitter.Rotation = NumberRange.new(0, 360)
 	mistEmitter.ZOffset = 2
+	mistEmitter.Texture = "rbxasset://textures/particles/white_circle_01.dds"
 
 	-- ============================================================
 	-- 边缘碰撞墙（不可见）
