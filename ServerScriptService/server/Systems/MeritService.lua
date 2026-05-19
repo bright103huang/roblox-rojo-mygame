@@ -222,30 +222,6 @@ function MeritService.PromoteToTianBing(player)
 		end
 end
 
--- 获取指定玩家的排名
-function MeritService.GetPlayerRank(userIdStr)
-	local success, pages = pcall(function()
-		return rankingStore:GetSortedAsync("Ascending", 10)
-	end)
-	if not success then return nil end
-
-	local rank = 1
-	while true do
-		local entry = pages:GetCurrentPage()
-		if not entry or #entry == 0 then break end
-		for _, item in ipairs(entry) do
-			if item.key == userIdStr then
-				return rank
-			end
-			rank = i
-		end
-		if pages.IsFinished then break end
-		pages:AdvanceAsync()
-	end
-	return nil
-end
-
--- 获取排行榜前十
 function MeritService.GetRankings()
 	local success, pages = pcall(function()
 		return rankingStore:GetSortedAsync("Ascending", 10)
