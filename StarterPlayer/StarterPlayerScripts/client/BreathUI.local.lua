@@ -172,6 +172,7 @@ end)
 function BreathUI:Start()
 	screenGui.Enabled = true
 	isActive = true
+	outerRing.Visible = true
 	isHolding = false
 	breathCount = 0
 	breathCounter.Text = "呼吸 0/" .. TOTAL_BREATHS

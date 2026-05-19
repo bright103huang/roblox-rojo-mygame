@@ -818,8 +818,8 @@ local function setupHomeScene()
 		if prayerDebounce[player.UserId] then return end
 		local data = DataManager and DataManager:GetData(player)
 		if not data then return end
-		prayerDebounce[player.UserId] = true
 		if not HomeEntryTracker.CanUse(player, "Prayed") then return end
+		prayerDebounce[player.UserId] = true
 		task.delay(1, function() prayerDebounce[player.UserId] = nil end)
 		HomeEvent:FireClient(player, "ShowPrayer")
 	end)
