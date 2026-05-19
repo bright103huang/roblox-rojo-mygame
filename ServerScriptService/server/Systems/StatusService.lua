@@ -17,6 +17,7 @@ local RiskConfig = Config.Risk
 -- ============================================================
 local SpeedCalculator = nil  -- 延迟加载，避免循环依赖
 local TimeService = nil      -- 延迟加载，避免循环依赖
+	local MeritService = nil     -- 延迟加载，避免循环依赖
 
 local function getSpeedCalculator()
 	if not SpeedCalculator then
@@ -34,6 +35,13 @@ local function getTimeModifier()
 	end
 	return { RestEff = 1.0, TaskEff = 1.0, ShopOpen = false }
 end
+
+	local function getMeritService()
+		if not MeritService then
+			MeritService = require(script.Parent.MeritService)
+		end
+		return MeritService
+	end
 
 -- ============================================================
 -- 火毒 DoT 跟踪
@@ -218,8 +226,8 @@ function StatusService:ApplyCosts(player, costsTable)
 	end
 
 	-- 检测晋升条件
-	local MeritService = require(script.Parent.MeritService)
-	MeritService.CheckAutoPromotion(player)
+	
+	getMeritService().CheckAutoPromotion(player)
 
 	-- 红线检测
 	self:CheckRedLines(player)
@@ -355,8 +363,8 @@ function StatusService:AddExp(player, attrField, amount)
 		end
 
 			-- 检测晋升条件
-			local MeritService = require(script.Parent.MeritService)
-			MeritService.CheckAutoPromotion(player)
+			
+			getMeritService().CheckAutoPromotion(player)
 	else
 		-- 只更新经验（不更新 level），无需同步客户端
 		-- 但需要存回 cache（已经 set 了）
