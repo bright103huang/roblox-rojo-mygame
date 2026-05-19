@@ -28,9 +28,6 @@ if not taskEvent then
 end
 
 -- ============================================================
--- 缓存晋升数据（供排行榜使用）
--- ============================================================
-local ceremonyData = nil
 
 -- ============================================================
 -- 排行榜面板
@@ -140,6 +137,10 @@ end
 -- 晋升仪式动画
 -- ============================================================
 local function startCeremony(data)
+	if not data then
+		warn("PromotionUI: ceremony data is nil")
+		return
+	end
 	-- 创建全屏 ScreenGui
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "PromotionCeremony"
@@ -319,13 +320,13 @@ local function startCeremony(data)
 		end)
 	end)
 end
-
--- ============================================================
--- 监听晋升仪式事件
--- ============================================================
-taskEvent.OnClientEvent:Connect(function(eventName, data)
-	if eventName == "PromotionCeremony" then
-		ceremonyData = data
+	local ceremonyConnection
+	ceremonyConnection = taskEvent.OnClientEvent:Connect(function(eventName, data)
+		if eventName == "PromotionCeremony" then
+			ceremonyConnection:Disconnect()
+			startCeremony(data)
+		end
+	end)
 		startCeremony(data)
 	end
 end)
