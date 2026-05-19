@@ -180,11 +180,6 @@ function ShopService:Purchase(player, itemKey)
 		return "UnknownItem", "数据未加载"
 	end
 
-	-- 检查营业时间
-	if player:GetAttribute("ShopOpen") == 0 then
-		return "ShopClosed", "仙丹阁已打烊，营业时间：未时-戌时 (12:00-22:00)"
-	end
-
 	local item = DanConfig.Items[itemKey]
 	if not item then
 		return "UnknownItem", "未知商品"
@@ -344,14 +339,6 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		local data = DataManager:GetData(player)
 		if not data then return end
 
-		-- 检查营业时间
-		if player:GetAttribute("ShopOpen") == 0 then
-			ShopEvent:FireClient(player, "ShopClosed", {
-				Message = "仙丹阁已打烊，营业时间：未时-戌时 (12:00-22:00)",
-			})
-			return
-		end
-
 		-- 检查限购刷新
 		ShopService:ClearBargains(player)
 		ShopService:CheckReset(player, data)
@@ -439,15 +426,6 @@ ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 		local itemKey = contextData and contextData.ItemKey
 		local choiceIndex = contextData and contextData.ChoiceIndex
 		if not itemKey then return end
-
-		-- 检查营业时间
-		if player:GetAttribute("ShopOpen") == 0 then
-			ShopEvent:FireClient(player, "BargainResult", {
-				Success = false,
-				Message = "仙丹阁已打烊",
-			})
-			return
-		end
 
 		if not choiceIndex then
 			-- Step 1: 请求题目

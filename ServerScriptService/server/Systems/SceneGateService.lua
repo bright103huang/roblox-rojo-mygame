@@ -33,9 +33,6 @@ function SceneGateService:EvaluateScene(player, sceneId)
 		return { status = "available", reason = "" }
 
 	elseif sceneId == "DanShop" then
-		if not timeMod.ShopOpen then
-			return { status = "warning", reason = "已打烊（营业：未时-戌时）" }
-		end
 		if (data.XianJing or 0) <= 0 then
 			return { status = "caution", reason = "仙晶不足" }
 		end

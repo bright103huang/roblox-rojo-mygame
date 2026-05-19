@@ -771,7 +771,7 @@ local function pollShopDistance()
 		if not danShop then continue end
 		local dist = (hrp.Position - danShop.Position).Magnitude
 		if dist < 4 then
-			if ShopEvent and player:GetAttribute("ShopOpen") == 1 then
+			if ShopEvent then
 				ShopEvent:FireServer("Pick:Shop")
 			end
 		end
