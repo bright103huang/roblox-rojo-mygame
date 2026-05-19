@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local HomeEvent = require(ReplicatedStorage.Shared.Events.HomeEvents)
+local DanConfig = require(ReplicatedStorage.Shared.Config.DanConfig)
 local SleepUI = {}
 local screenGui, mainFrame, rejectTime, isActive
 local backpackRenderFn = nil
@@ -11,6 +12,43 @@ local backpackRenderFn = nil
 -- ============================================================
 -- 背包丹药选择面板
 -- ============================================================
+local function pillName(key)
+	local item = DanConfig.Items[key]
+	if not item then return key end
+	return item.RealName or item.Name
+end
+
+local function pillEffectText(key)
+	local item = DanConfig.Items[key]
+	if not item then return "" end
+	local val = item.EffectValue * 2
+	local label = ""
+	if item.EffectType == "Stamina" then
+		label = "体力"
+	elseif item.EffectType == "Fatigue" then
+		label = "疲劳"
+	elseif item.EffectType == "Spirit" then
+		label = "精神"
+	elseif item.EffectType == "FirePoison" then
+		label = "火毒"
+	elseif item.EffectType == "AgilityExp" then
+		label = "身法"
+	elseif item.EffectType == "AlchemyExp" then
+		label = "火候"
+	elseif item.EffectType == "CombatExp" then
+		label = "仙力"
+	elseif item.EffectType == "RandomStat" then
+		return "随机属性+" .. val
+	elseif item.EffectType == "AllStats" then
+		return "全属性+" .. val
+	end
+	if val > 0 then
+		return label .. "+" .. val
+	else
+		return label .. val
+	end
+end
+
 local function createBackpackPicker(onComplete)
 	local picker = Instance.new("Frame")
 	picker.Name = "PillPicker"
@@ -70,10 +108,10 @@ local function createBackpackPicker(onComplete)
 				rcorner.Parent = row
 
 				local nameL = Instance.new("TextLabel")
-				nameL.Size = UDim2.new(0, 100, 0, 20)
+				nameL.Size = UDim2.new(0, 150, 0, 20)
 				nameL.Position = UDim2.new(0, 8, 0, 2)
 				nameL.BackgroundTransparency = 1
-				nameL.Text = itemKey
+				nameL.Text = pillName(itemKey) .. " (" .. pillEffectText(itemKey) .. ")"
 				nameL.TextColor3 = Color3.fromRGB(200, 200, 200)
 				nameL.TextSize = 14
 				nameL.TextXAlignment = Enum.TextXAlignment.Left
@@ -81,7 +119,7 @@ local function createBackpackPicker(onComplete)
 
 				local countL = Instance.new("TextLabel")
 				countL.Size = UDim2.new(0, 40, 0, 20)
-				countL.Position = UDim2.new(0, 110, 0, 2)
+				countL.Position = UDim2.new(0, 160, 0, 2)
 				countL.BackgroundTransparency = 1
 				countL.Text = "x" .. tostring(count)
 				countL.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -91,7 +129,7 @@ local function createBackpackPicker(onComplete)
 
 				local useBtn = Instance.new("TextButton")
 				useBtn.Size = UDim2.new(0, 50, 0, 24)
-				useBtn.Position = UDim2.new(0, 160, 0, 6)
+				useBtn.Position = UDim2.new(0, 205, 0, 6)
 				useBtn.Text = "服用"
 				useBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 180)
 				useBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -104,8 +142,8 @@ local function createBackpackPicker(onComplete)
 				btnCorner.Parent = useBtn
 
 				local takenL = Instance.new("TextLabel")
-				takenL.Size = UDim2.new(0, 60, 0, 20)
-				takenL.Position = UDim2.new(0, 220, 0, 2)
+				takenL.Size = UDim2.new(0, 40, 0, 20)
+				takenL.Position = UDim2.new(0, 260, 0, 2)
 				takenL.BackgroundTransparency = 1
 				takenL.Text = ""
 				takenL.TextColor3 = Color3.fromRGB(150, 255, 150)

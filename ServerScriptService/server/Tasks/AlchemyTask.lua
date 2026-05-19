@@ -152,7 +152,7 @@ function AlchemyTask.OnPlayerDrop(player, _area)
 	-- 成功率 = 60% + 火候等级×3% - (火毒>60 ? 30% : 0)
 	local alchemyLv = data.AlchemyLv or 1
 	local firePoison = data.FirePoison or 0
-	local successChance = 0.6 + alchemyLv * 0.03
+	local successChance = 0.66 + alchemyLv * 0.03
 	if firePoison > Config.Stats.FIREPOISON_REDLINE then
 		successChance = successChance - 0.3
 	end

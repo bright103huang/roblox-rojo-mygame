@@ -1,7 +1,7 @@
 -- ============================================================
 -- 文件：ServerScriptService.Server.Systems.SpeedCalculator.lua
 -- 功能：动态速度计算器
--- 公式：FinalSpeed = (BaseSpeed + Agility * 0.5) * StatusModifier
+-- 公式：FinalSpeed = (BaseSpeed + Agility * 6) * StatusModifier
 -- ============================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
