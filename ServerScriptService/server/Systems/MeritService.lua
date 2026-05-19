@@ -12,7 +12,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local ExamConfig = Config.Exam
 
-local rankingStore = DataStoreService:GetDataStore("TianbingRankings")
+local rankingStore = DataStoreService:GetOrderedDataStore("TianbingRankings")
 
 -- ============================================================
 -- 配置
@@ -180,42 +180,46 @@ function MeritService.PromoteToTianBing(player)
 
 	-- 3. 写入 DataStore 排名
 	local success, err = pcall(function()
-		rankingStore:UpdateAsync(tostring(player.UserId), function(oldData)
-			local entry = oldData or {}
-			entry.UserId = player.UserId
-			entry.Name = player.Name
-			entry.Days = finishDay
-			return entry
+		rankingStore:UpdateAsync(tostring(player.UserId), function(_oldValue)
+			return finishDay, {
+				UserId = player.UserId,
+				Name = player.Name,
+				Days = finishDay,
+			}
 		end)
 	end)
 	if not success then
 		warn("TianbingRankings DataStore write failed for " .. player.Name .. ": " .. tostring(err))
 	end
 
-	-- 4. 获取排名
-	local rank = MeritService.GetPlayerRank(tostring(player.UserId))
+		-- 4. 获取排行榜前10
+		local rankings = MeritService.GetRankings()
 
-	-- 5. 获取排行榜前10
-	local rankings = MeritService.GetRankings()
+		-- 5. 计算玩家排名（从前10列表中匹配）
+		local rank = nil
+		for i, entry in ipairs(rankings) do
+		if entry.UserId == player.UserId then
+			rank = i
+			break
+		end
+		end
 
-	-- 6. 传送至金色大厅
-	local SceneManager = require(script.Parent.SceneManager)
-	SceneManager.TeleportToScene(player, "GoldenHall")
+		-- 6. 传送至金色大厅
+		local SceneManager = require(script.Parent.SceneManager)
+		SceneManager.TeleportToScene(player, "GoldenHall")
 
-	-- 7. 通知客户端播放晋升仪式
-	local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
-	if eventsFolder then
+		-- 7. 通知客户端播放晋升仪式
+		local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+		if eventsFolder then
 		local taskEvent = eventsFolder:FindFirstChild("TaskEvent")
 		if taskEvent then
 			taskEvent:FireClient(player, "PromotionCeremony", {
 				Days = finishDay,
-				Rank = rank or 999,
+				Rank = rank or (#rankings + 1),
 				Rankings = rankings,
 			})
 		end
-	end
-
-	print("🎉 " .. player.Name .. " 晋升为【天兵】！用时 " .. finishDay .. " 天")
+		end
 end
 
 -- 获取指定玩家的排名
@@ -233,7 +237,7 @@ function MeritService.GetPlayerRank(userIdStr)
 			if item.key == userIdStr then
 				return rank
 			end
-			rank = rank + 1
+			rank = i
 		end
 		if pages.IsFinished then break end
 		pages:AdvanceAsync()
