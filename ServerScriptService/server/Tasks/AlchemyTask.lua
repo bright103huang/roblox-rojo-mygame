@@ -78,6 +78,7 @@ function AlchemyTask.OnPlayerDrop(player, _area)
 		-- 第一次：药材入炉，记录状态
 		hasHerb[userId] = true
 		alchemyStep[userId] = 0
+		craftCount[userId] = nil
 		carrying[userId] = nil
 
 		local taskEvent = getTaskEvent()

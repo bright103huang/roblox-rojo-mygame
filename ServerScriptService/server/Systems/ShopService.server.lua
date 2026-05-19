@@ -332,9 +332,15 @@ end
 -- ============================================================
 -- 监听客户端请求
 -- ============================================================
+local pickDebounce = {}
+
 ShopEvent.OnServerEvent:Connect(function(player, action, legacyArg, contextData)
 	-- 打开商店
 	if action == "Pick:Shop" then
+		local now = tick()
+		local lastPick = pickDebounce[player.UserId] or 0
+		if now - lastPick < 1 then return end
+		pickDebounce[player.UserId] = now
 		local data = DataManager:GetData(player)
 		if not data then return end
 

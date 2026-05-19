@@ -18,7 +18,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local ShopEvent = nil
 local eventsFolder = ReplicatedStorage:WaitForChild("Events", 10)
 if eventsFolder then
-	ShopEvent = eventsFolder:FindFirstChild("ShopEvent")
+	ShopEvent = eventsFolder:WaitForChild("ShopEvent", 15)
 end
 
 -- ============================================================
@@ -771,8 +771,7 @@ local function pollShopDistance()
 		if not danShop then continue end
 		local dist = (hrp.Position - danShop.Position).Magnitude
 		if dist < 4 then
-			local data = DataManager and DataManager:GetData(player)
-			if ShopEvent and (not data or not data.LastPurchaseReset or player:GetAttribute("ShopOpen") ~= 0) then
+			if ShopEvent and player:GetAttribute("ShopOpen") == 1 then
 				ShopEvent:FireServer("Pick:Shop")
 			end
 		end

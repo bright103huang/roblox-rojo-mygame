@@ -148,6 +148,7 @@ end
 local rejectTime = 0
 HomeEvent.OnClientEvent:Connect(function(action, data)
 	if action == "StartMeditation" then
+		if isActive then return end
 		if rejectTime > 0 and tick() - rejectTime < 5 then
 			return  -- 5 秒内不再弹窗
 		end

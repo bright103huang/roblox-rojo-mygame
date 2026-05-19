@@ -234,6 +234,14 @@ TaskEvent.OnClientEvent:Connect(function(result, extraData)
 		-- 不打印"交付失败"避免混淆（2D游戏经过非目标桌子时会触发）
 		-- 注意：不重置 carrying，玩家可以继续尝试
 		-- 若服务端实际已解除 carrying，下一次 Pick 时会返回 PickFailed 才重置
+		if extraData and extraData.Reason == "MaxAttempts" then
+			TaskNotice:Notify({
+				Title = "❌ 炼丹已达上限",
+				Text = "今日炼丹次数已用完",
+				Duration = 2,
+				Color = Color3.fromRGB(255, 100, 100),
+			})
+		end
 
 	elseif resultType == "SpeedUp" then
 		print("⚡ 速度升级！当前额外速度：" .. tostring(result))
