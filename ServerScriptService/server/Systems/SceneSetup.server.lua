@@ -854,6 +854,100 @@ local function setupHomeScene()
 end
 
 -- ============================================================
+-- 天兵晋升 Golden Hall — 2D 横版布局（终点场景）
+-- ============================================================
+local function setupGoldenHallScene()
+	local origin = Vector3.new(-3000, 3, 0)
+	local W = 40
+
+	-- 地面
+	createFloor(origin + Vector3.new(0, -0.5, 0), W, 8, BrickColor.new("Gold"), 0.1)
+	createUnderFloor(origin + Vector3.new(0, -0.5, 0), 500, 40)
+
+	-- 后墙（z=-4）：金色主墙
+	createWall(origin + Vector3.new(0, 3, -4), W, 6, 0.5, BrickColor.new("Gold"))
+
+	-- 红色帷幕（z=-4，左右两侧）
+	createDecor(origin + Vector3.new(-15, 3, -4), Vector3.new(8, 6, 0.3), BrickColor.new("Bright red"))
+	createDecor(origin + Vector3.new(15, 3, -4), Vector3.new(8, 6, 0.3), BrickColor.new("Bright red"))
+
+	-- 中央王座（z=-4 到 z=-3）
+	createDecor(origin + Vector3.new(0, 0.8, -3), Vector3.new(4, 1.6, 1.5), BrickColor.new("Gold"))
+	createDecor(origin + Vector3.new(0, 2, -3), Vector3.new(3, 0.8, 1.2), BrickColor.new("Bright red"))
+	createDecor(origin + Vector3.new(0, 4, -3.5), Vector3.new(3, 1.5, 0.8), BrickColor.new("Gold"))
+
+	-- 柱子（z=-4，王座两侧）
+	for x = -18, 18, 12 do
+		if math.abs(x) > 2 then
+			createPillar(origin + Vector3.new(x, 3, -4), 6, BrickColor.new("Gold"))
+		end
+	end
+
+	-- ============================================================
+	-- 前层（z=4）：金色粒子效果
+	-- ============================================================
+	local sparklePart = Instance.new("Part")
+	sparklePart.Name = "GoldenSparkle"
+	sparklePart.Size = Vector3.new(W - 4, 0.2, 0.5)
+	sparklePart.Position = origin + Vector3.new(0, 5, 4)
+	sparklePart.Anchored = true
+	sparklePart.CanCollide = false
+	sparklePart.Transparency = 1
+	sparklePart.Parent = workspace
+
+	local sparkleEmitter = Instance.new("ParticleEmitter")
+	sparkleEmitter.Parent = sparklePart
+	sparkleEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkleEmitter.Rate = 20
+	sparkleEmitter.Lifetime = NumberRange.new(2, 4)
+	sparkleEmitter.Speed = NumberRange.new(0.5, 1.5)
+	sparkleEmitter.VelocityInheritance = 0
+	sparkleEmitter.SpreadAngle = Vector2.new(0, 180)
+	sparkleEmitter.Acceleration = Vector3.new(0, -0.5, 0)
+	sparkleEmitter.Drag = 0.5
+	sparkleEmitter.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+	sparkleEmitter.Transparency = NumberSequence.new(0.4, 0.8)
+	sparkleEmitter.Size = NumberSequence.new(0.3, 0.1)
+	sparkleEmitter.Rotation = NumberRange.new(0, 360)
+	sparkleEmitter.ZOffset = 2
+
+	-- ============================================================
+	-- 环境雾气（底部，半透明白色薄雾上升）
+	-- ============================================================
+	local mistPart = Instance.new("Part")
+	mistPart.Name = "GoldenHallMist"
+	mistPart.Size = Vector3.new(W - 4, 0.2, 6)
+	mistPart.Position = origin + Vector3.new(0, 0.2, 0)
+	mistPart.Anchored = true
+	mistPart.CanCollide = false
+	mistPart.Transparency = 1
+	mistPart.Parent = workspace
+
+	local mistEmitter = Instance.new("ParticleEmitter")
+	mistEmitter.Parent = mistPart
+	mistEmitter.Rate = 5
+	mistEmitter.Lifetime = NumberRange.new(4, 8)
+	mistEmitter.Speed = NumberRange.new(0.2, 0.6)
+	mistEmitter.VelocityInheritance = 0
+	mistEmitter.SpreadAngle = Vector2.new(30, 180)
+	mistEmitter.Acceleration = Vector3.new(0, 0.3, 0)
+	mistEmitter.Drag = 0.8
+	mistEmitter.Color = ColorSequence.new(Color3.fromRGB(200, 200, 200))
+	mistEmitter.Transparency = NumberSequence.new(0.7, 1)
+	mistEmitter.Size = NumberSequence.new(1, 3)
+	mistEmitter.Rotation = NumberRange.new(0, 360)
+	mistEmitter.ZOffset = 2
+
+	-- ============================================================
+	-- 边缘碰撞墙（不可见）
+	-- ============================================================
+	createInvisibleWall(origin + Vector3.new(-20, 2, 0), 0.3, 8, 8)   -- 左墙
+	createInvisibleWall(origin + Vector3.new(20, 2, 0), 0.3, 8, 8)    -- 右墙
+
+	print("👑 天兵晋升 Golden Hall 已就绪（王座大厅 + 金色粒子 + 薄雾）")
+end
+
+-- ============================================================
 -- 主初始化
 -- ============================================================
 task.wait(3)
@@ -862,4 +956,5 @@ setupAlchemyScene()
 setupBeastScene()
 setupShopScene()
 setupHomeScene()
-print("✅ 所有场景已初始化（御膳房/炼丹洞天/妖兽战场/仙丹阁/家）")
+setupGoldenHallScene()
+print("✅ 所有场景已初始化（御膳房/炼丹洞天/妖兽战场/仙丹阁/家/天兵晋升GoldenHall）")
